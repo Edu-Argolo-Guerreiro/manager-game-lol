@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { NavLink } from "@/components/layout/nav-link";
 
 export const metadata: Metadata = {
     title: "Rift Manager",
@@ -11,6 +12,7 @@ const navItems = [
     { href: "/dashboard", label: "Dashboard" },
     { href: "/roster", label: "Elenco" },
     { href: "/market", label: "Mercado" },
+    { href: "/staff", label: "Staff" },
     { href: "/calendar", label: "Calendário" },
     { href: "/standings", label: "Classificação" },
     { href: "/finances", label: "Finanças" },
@@ -28,7 +30,10 @@ export default function RootLayout({
                     <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur">
                         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
                             <div>
-                                <Link href="/" className="text-xl font-black tracking-[0.18em] text-cyan-400">
+                                <Link
+                                    href="/"
+                                    className="text-xl font-black tracking-[0.18em] text-cyan-400"
+                                >
                                     RIFT MANAGER
                                 </Link>
                                 <p className="mt-1 text-xs uppercase tracking-[0.24em] text-zinc-500">
@@ -38,13 +43,7 @@ export default function RootLayout({
 
                             <nav className="hidden flex-wrap items-center gap-2 md:flex">
                                 {navItems.map((item) => (
-                                    <Link
-                                        key={item.href}
-                                        href={item.href}
-                                        className="rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-cyan-900 hover:bg-zinc-800 hover:text-white"
-                                    >
-                                        {item.label}
-                                    </Link>
+                                    <NavLink key={item.href} href={item.href} label={item.label} />
                                 ))}
                             </nav>
                         </div>

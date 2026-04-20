@@ -1,5 +1,6 @@
 import { BenchForm } from "@/components/roster/bench-form";
 import { PromoteForm } from "@/components/roster/promote-form";
+import { SellPlayerForm } from "@/components/roster/sell-player-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { getPlayerTeam } from "@/server/services/team-service";
@@ -23,10 +24,13 @@ export default async function RosterPage() {
                         {starters.map((player) => (
                             <div
                                 key={player.id}
-                                className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
+                                className="rounded-2xl border border-cyan-900/40 bg-zinc-950 p-4"
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div>
+                                        <div className="mb-2 inline-flex rounded-full bg-cyan-500/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+                                            Titular
+                                        </div>
                                         <p className="font-semibold text-white">{player.nickname}</p>
                                         <p className="text-sm text-zinc-400">
                                             {player.role} • {player.nationality} • {player.age} anos
@@ -53,8 +57,24 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 flex justify-end">
+                                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Salário</p>
+                                        <p className="font-semibold text-white">
+                                            R$ {player.salary.toLocaleString("pt-BR")}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Venda estimada</p>
+                                        <p className="font-semibold text-emerald-300">
+                                            R$ {Math.floor(player.marketValue * 0.88).toLocaleString("pt-BR")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap justify-end gap-2">
                                     <BenchForm playerId={player.id} />
+                                    <SellPlayerForm playerId={player.id} />
                                 </div>
                             </div>
                         ))}
@@ -70,10 +90,13 @@ export default async function RosterPage() {
                         {bench.map((player) => (
                             <div
                                 key={player.id}
-                                className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
+                                className="rounded-2xl border border-amber-900/30 bg-zinc-950 p-4"
                             >
                                 <div className="flex items-center justify-between gap-4">
                                     <div>
+                                        <div className="mb-2 inline-flex rounded-full bg-amber-500/15 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-300">
+                                            Reserva
+                                        </div>
                                         <p className="font-semibold text-white">{player.nickname}</p>
                                         <p className="text-sm text-zinc-400">
                                             {player.role} • {player.nationality} • {player.age} anos
@@ -100,8 +123,24 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 flex justify-end">
+                                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Salário</p>
+                                        <p className="font-semibold text-white">
+                                            R$ {player.salary.toLocaleString("pt-BR")}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Venda estimada</p>
+                                        <p className="font-semibold text-emerald-300">
+                                            R$ {Math.floor(player.marketValue * 0.74).toLocaleString("pt-BR")}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex flex-wrap justify-end gap-2">
                                     <PromoteForm playerId={player.id} />
+                                    <SellPlayerForm playerId={player.id} />
                                 </div>
                             </div>
                         ))}

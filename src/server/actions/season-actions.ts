@@ -3,8 +3,9 @@
 import { Division, MatchPhase } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateTeamStrength } from "@/lib/sim/team-strength";
-import { simulateBestOf } from "@/lib/sim/match-engine";
+import { generateMatchNarrative, simulateBestOf } from "@/lib/sim/match-engine";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 async function createRoundRobinMatches(seasonId: string, division: Division, teamIds: string[]) {
     const shuffled = [...teamIds];
@@ -41,6 +42,35 @@ async function createRoundRobinMatches(seasonId: string, division: Division, tea
     }
 }
 
+async function applyMonthlyFinance(playerTeamId: string) {
+    const team = await prisma.team.findUnique({
+        where: { id: playerTeamId },
+        include: {
+            players: true,
+            staff: true,
+        },
+    });
+
+    if (!team) return;
+
+    const playerPayroll = team.players.reduce((acc, player) => acc + player.salary, 0);
+    const staffPayroll = team.staff.reduce((acc, staff) => acc + staff.salary, 0);
+
+    const payroll = playerPayroll + staffPayroll;
+    const sponsorIncome = 140000 + team.reputation * 1400;
+    const fanIncome = Math.floor(team.fanbase * 2.2);
+    const monthlyNet = sponsorIncome + fanIncome - payroll;
+
+    await prisma.team.update({
+        where: { id: team.id },
+        data: {
+            budget: {
+                increment: monthlyNet,
+            },
+        },
+    });
+}
+
 export async function advanceWeek() {
     const save = await prisma.saveState.findFirst({
         orderBy: { createdAt: "desc" },
@@ -54,10 +84,12 @@ export async function advanceWeek() {
 
     if (!season || season.isFinished) return;
 
+    const simulatedWeek = season.currentWeek;
+
     const matches = await prisma.match.findMany({
         where: {
             seasonId: season.id,
-            week: season.currentWeek,
+            week: simulatedWeek,
             played: false,
         },
         include: {
@@ -89,6 +121,21 @@ export async function advanceWeek() {
 
         const result = simulateBestOf(homeStrength, awayStrength, match.bestOf);
         const winnerTeamId = result.homeWon ? match.homeTeamId : match.awayTeamId;
+        const winnerShortName = result.homeWon
+            ? match.homeTeam.shortName
+            : match.awayTeam.shortName;
+
+        const summary = generateMatchNarrative({
+            homeTeamName: match.homeTeam.name,
+            awayTeamName: match.awayTeam.name,
+            homeShortName: match.homeTeam.shortName,
+            awayShortName: match.awayTeam.shortName,
+            homeStrength,
+            awayStrength,
+            homeScore: result.homeScore,
+            awayScore: result.awayScore,
+            winnerShortName,
+        });
 
         await prisma.match.update({
             where: { id: match.id },
@@ -97,7 +144,7 @@ export async function advanceWeek() {
                 homeScore: result.homeScore,
                 awayScore: result.awayScore,
                 winnerTeamId,
-                summary: `${match.homeTeam.shortName} ${result.homeScore} x ${result.awayScore} ${match.awayTeam.shortName}`,
+                summary,
             },
         });
 
@@ -122,6 +169,10 @@ export async function advanceWeek() {
                 data: { losses: { increment: 1 } },
             });
         }
+    }
+
+    if (save.playerTeamId && simulatedWeek % 4 === 0) {
+        await applyMonthlyFinance(save.playerTeamId);
     }
 
     const remainingMatches = await prisma.match.count({
@@ -154,6 +205,10 @@ export async function advanceWeek() {
     revalidatePath("/finances");
     revalidatePath("/roster");
     revalidatePath("/market");
+    revalidatePath("/staff");
+    revalidatePath("/week-review");
+
+    redirect(`/week-review?week=${simulatedWeek}`);
 }
 
 export async function startNextSeason() {
@@ -266,4 +321,5 @@ export async function startNextSeason() {
     revalidatePath("/finances");
     revalidatePath("/roster");
     revalidatePath("/market");
+    revalidatePath("/staff");
 }
