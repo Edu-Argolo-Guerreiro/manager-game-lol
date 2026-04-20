@@ -1,15 +1,156 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../app/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
+}
+
+enum Division {
+  TIER1
+  TIER2
+}
+
+enum Role {
+  TOP
+  JG
+  MID
+  ADC
+  SUP
+}
+
+enum StaffRole {
+  HEAD_COACH
+  ANALYST
+  MANAGER
+}
+
+enum PlayerStatus {
+  STARTER
+  BENCH
+  FREE_AGENT
+}
+
+enum MatchPhase {
+  REGULAR_SEASON
+  PLAYOFFS
+}
+
+model Team {
+  id             String    @id @default(cuid())
+  name           String
+  shortName      String
+  division       Division
+  budget         Int
+  reputation     Int
+  fanbase        Int
+  wins           Int       @default(0)
+  losses         Int       @default(0)
+  facilityLevel  Int       @default(1)
+  createdByPlayer Boolean  @default(false)
+
+  players        Player[]
+  staff          Staff[]
+  homeMatches    Match[]   @relation("HomeTeam")
+  awayMatches    Match[]   @relation("AwayTeam")
+  winnerMatches  Match[]   @relation("WinnerTeam")
+
+  @@unique([name])
+  @@unique([shortName])
+}
+
+model Player {
+  id            String       @id @default(cuid())
+  nickname      String
+  nationality   String
+  age           Int
+  role          Role
+  overall       Int
+  potential     Int
+  salary        Int
+  marketValue   Int
+  contractYears Int
+  morale        Int
+  form          Int
+  teamwork      Int
+  discipline    Int
+  championPool  Int
+  clutch        Int
+  shotcalling   Int
+  laneStrength  Int
+  teamfight     Int
+  status        PlayerStatus @default(FREE_AGENT)
+
+  teamId        String?
+  team          Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([teamId])
+  @@index([role])
+  @@index([overall])
+}
+
+model Staff {
+  id            String    @id @default(cuid())
+  name          String
+  role          StaffRole
+  quality       Int
+  salary        Int
+  contractYears Int
+
+  teamId        String?
+  team          Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([teamId])
+}
+
+model Season {
+  id            String   @id @default(cuid())
+  year          Int
+  currentPhase  MatchPhase @default(REGULAR_SEASON)
+  currentWeek   Int      @default(1)
+  isFinished    Boolean  @default(false)
+
+  matches       Match[]
+
+  @@unique([year])
+}
+
+model Match {
+  id            String      @id @default(cuid())
+  week          Int
+  bestOf        Int
+  played        Boolean     @default(false)
+  homeScore     Int?
+  awayScore     Int?
+  summary       String?
+
+  division      Division
+  phase         MatchPhase
+
+  seasonId      String
+  season        Season      @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  homeTeamId    String
+  homeTeam      Team        @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+
+  awayTeamId    String
+  awayTeam      Team        @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+
+  winnerTeamId  String?
+  winnerTeam    Team?       @relation("WinnerTeam", fields: [winnerTeamId], references: [id], onDelete: SetNull)
+
+  @@index([seasonId])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+  @@index([winnerTeamId])
+}
+
+model SaveState {
+  id             String   @id @default(cuid())
+  currentSeasonId String?
+  playerTeamId    String?
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
