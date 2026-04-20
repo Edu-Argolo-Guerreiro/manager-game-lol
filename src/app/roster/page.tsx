@@ -1,3 +1,5 @@
+import { BenchForm } from "@/components/roster/bench-form";
+import { PromoteForm } from "@/components/roster/promote-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { getPlayerTeam } from "@/server/services/team-service";
@@ -23,7 +25,7 @@ export default async function RosterPage() {
                                 key={player.id}
                                 className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
                             >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-4">
                                     <div>
                                         <p className="font-semibold text-white">{player.nickname}</p>
                                         <p className="text-sm text-zinc-400">
@@ -51,19 +53,8 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                                    <div className="rounded-lg bg-zinc-900 p-3">
-                                        <p className="text-zinc-500">Salário</p>
-                                        <p className="font-semibold text-white">
-                                            R$ {player.salary.toLocaleString("pt-BR")}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-lg bg-zinc-900 p-3">
-                                        <p className="text-zinc-500">Valor de mercado</p>
-                                        <p className="font-semibold text-white">
-                                            R$ {player.marketValue.toLocaleString("pt-BR")}
-                                        </p>
-                                    </div>
+                                <div className="mt-4 flex justify-end">
+                                    <BenchForm playerId={player.id} />
                                 </div>
                             </div>
                         ))}
@@ -81,7 +72,7 @@ export default async function RosterPage() {
                                 key={player.id}
                                 className="rounded-xl border border-zinc-800 bg-zinc-950 p-4"
                             >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-4">
                                     <div>
                                         <p className="font-semibold text-white">{player.nickname}</p>
                                         <p className="text-sm text-zinc-400">
@@ -107,6 +98,10 @@ export default async function RosterPage() {
                                         <p className="text-zinc-500">Forma</p>
                                         <p className="font-semibold text-white">{player.form}</p>
                                     </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <PromoteForm playerId={player.id} />
                                 </div>
                             </div>
                         ))}

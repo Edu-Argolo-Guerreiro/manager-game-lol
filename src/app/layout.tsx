@@ -7,6 +7,15 @@ export const metadata: Metadata = {
     description: "Manager de League of Legends offline",
 };
 
+const navItems = [
+    { href: "/dashboard", label: "Dashboard" },
+    { href: "/roster", label: "Elenco" },
+    { href: "/market", label: "Mercado" },
+    { href: "/calendar", label: "Calendário" },
+    { href: "/standings", label: "Classificação" },
+    { href: "/finances", label: "Finanças" },
+];
+
 export default function RootLayout({
     children,
 }: Readonly<{
@@ -14,38 +23,34 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="pt-BR">
-            <body className="bg-zinc-950 text-zinc-100">
-                <div className="min-h-screen">
-                    <header className="border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
+            <body className="min-h-screen bg-zinc-950 text-zinc-100">
+                <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.10),transparent_30%),linear-gradient(to_bottom,#09090b,#09090b)]">
+                    <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur">
                         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-                            <Link href="/" className="text-xl font-bold tracking-wide text-cyan-400">
-                                RIFT MANAGER
-                            </Link>
+                            <div>
+                                <Link href="/" className="text-xl font-black tracking-[0.18em] text-cyan-400">
+                                    RIFT MANAGER
+                                </Link>
+                                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-zinc-500">
+                                    Brazil Tier 2 Career Mode
+                                </p>
+                            </div>
 
-                            <nav className="flex flex-wrap items-center gap-3 text-sm text-zinc-300">
-                                <Link href="/dashboard" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Dashboard
-                                </Link>
-                                <Link href="/roster" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Elenco
-                                </Link>
-                                <Link href="/market" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Mercado
-                                </Link>
-                                <Link href="/calendar" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Calendário
-                                </Link>
-                                <Link href="/standings" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Classificação
-                                </Link>
-                                <Link href="/finances" className="rounded-md px-3 py-2 hover:bg-zinc-800">
-                                    Finanças
-                                </Link>
+                            <nav className="hidden flex-wrap items-center gap-2 md:flex">
+                                {navItems.map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className="rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-2 text-sm font-medium text-zinc-300 transition hover:border-cyan-900 hover:bg-zinc-800 hover:text-white"
+                                    >
+                                        {item.label}
+                                    </Link>
+                                ))}
                             </nav>
                         </div>
                     </header>
 
-                    <main className="mx-auto max-w-7xl px-6 py-6">{children}</main>
+                    <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
                 </div>
             </body>
         </html>

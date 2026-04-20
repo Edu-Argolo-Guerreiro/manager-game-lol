@@ -5,16 +5,19 @@ import { getCurrentSeason, getMatchesByWeek } from "@/server/services/season-ser
 export default async function CalendarPage() {
     const season = await getCurrentSeason();
     const currentWeek = season?.currentWeek ?? 1;
-    const matches = await getMatchesByWeek(currentWeek);
+    const shownWeek =
+        season?.isFinished && currentWeek > 1 ? currentWeek - 1 : currentWeek;
+
+    const matches = await getMatchesByWeek(shownWeek);
 
     return (
         <div>
             <PageHeader
                 title="Calendário"
-                subtitle="Partidas da semana atual da temporada."
+                subtitle="Partidas da semana atual ou da última semana jogada."
             />
 
-            <SectionCard title={`Semana ${currentWeek}`}>
+            <SectionCard title={`Semana ${shownWeek}`}>
                 <div className="space-y-3">
                     {matches.map((match) => (
                         <div
@@ -24,9 +27,22 @@ export default async function CalendarPage() {
                             <p className="text-sm text-zinc-500">
                                 {match.division} • {match.phase} • MD{match.bestOf}
                             </p>
-                            <p className="mt-1 font-semibold text-white">
-                                {match.homeTeam.shortName} vs {match.awayTeam.shortName}
-                            </p>
+
+                            {match.played ? (
+                                <>
+                                    <p className="mt-1 font-semibold text-white">
+                                        {match.homeTeam.shortName} {match.homeScore} x {match.awayScore}{" "}
+                                        {match.awayTeam.shortName}
+                                    </p>
+                                    <p className="mt-1 text-sm text-zinc-400">
+                                        Vencedor: {match.winnerTeam?.shortName ?? "-"}
+                                    </p>
+                                </>
+                            ) : (
+                                <p className="mt-1 font-semibold text-white">
+                                    {match.homeTeam.shortName} vs {match.awayTeam.shortName}
+                                </p>
+                            )}
                         </div>
                     ))}
 

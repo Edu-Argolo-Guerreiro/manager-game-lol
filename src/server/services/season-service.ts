@@ -26,9 +26,25 @@ export async function getMatchesByWeek(week: number) {
             awayTeam: true,
             winnerTeam: true,
         },
-        orderBy: [
-            { division: "asc" },
-            { phase: "asc" },
-        ],
+        orderBy: [{ division: "asc" }, { phase: "asc" }],
+    });
+}
+
+export async function getPlayedMatchesByWeek(week: number) {
+    const season = await getCurrentSeason();
+    if (!season) return [];
+
+    return prisma.match.findMany({
+        where: {
+            seasonId: season.id,
+            week,
+            played: true,
+        },
+        include: {
+            homeTeam: true,
+            awayTeam: true,
+            winnerTeam: true,
+        },
+        orderBy: [{ division: "asc" }, { phase: "asc" }],
     });
 }
