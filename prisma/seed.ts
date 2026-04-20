@@ -34,8 +34,11 @@ type SeedPlayer = {
     status: PlayerStatus;
 };
 
+const DEFAULT_PLAYER_TEAM_NAME = "Nova Esports";
+const DEFAULT_PLAYER_TEAM_SHORT = "NOVA";
+
 const teams: SeedTeam[] = [
-    { name: "paiN Gaming Academy", shortName: "PNG.A", division: Division.TIER2, budget: 1150000, reputation: 58, fanbase: 42000, createdByPlayer: true },
+    { name: DEFAULT_PLAYER_TEAM_NAME, shortName: DEFAULT_PLAYER_TEAM_SHORT, division: Division.TIER2, budget: 650000, reputation: 38, fanbase: 9000, createdByPlayer: true },
     { name: "RED Academy", shortName: "RED.A", division: Division.TIER2, budget: 820000, reputation: 45, fanbase: 18000 },
     { name: "LOUD Academy", shortName: "LLL.A", division: Division.TIER2, budget: 870000, reputation: 47, fanbase: 21000 },
     { name: "FURIA Academy", shortName: "FUR.A", division: Division.TIER2, budget: 790000, reputation: 43, fanbase: 17000 },
@@ -54,13 +57,15 @@ const teams: SeedTeam[] = [
     { name: "Liberty", shortName: "LBR", division: Division.TIER1, budget: 1950000, reputation: 73, fanbase: 92000 },
 ];
 
-function makePlayer(data: Partial<SeedPlayer> & Pick<SeedPlayer, "nickname" | "role" | "overall" | "potential">): SeedPlayer {
+function makePlayer(
+    data: Partial<SeedPlayer> & Pick<SeedPlayer, "nickname" | "role" | "overall" | "potential">
+): SeedPlayer {
     const ageByRole: Record<Role, number> = {
-        TOP: 23,
-        JG: 22,
-        MID: 22,
-        ADC: 23,
-        SUP: 24,
+        TOP: 22,
+        JG: 21,
+        MID: 21,
+        ADC: 22,
+        SUP: 23,
     };
 
     const role = data.role;
@@ -73,20 +78,83 @@ function makePlayer(data: Partial<SeedPlayer> & Pick<SeedPlayer, "nickname" | "r
         role,
         overall,
         potential: data.potential,
-        salary: data.salary ?? (overall >= 78 ? 105000 : overall >= 74 ? 78000 : overall >= 70 ? 56000 : 38000),
-        marketValue: data.marketValue ?? (overall >= 78 ? 720000 : overall >= 74 ? 520000 : overall >= 70 ? 340000 : 220000),
+        salary: data.salary ?? (overall >= 78 ? 105000 : overall >= 74 ? 78000 : overall >= 70 ? 56000 : overall >= 66 ? 42000 : 26000),
+        marketValue: data.marketValue ?? (overall >= 78 ? 720000 : overall >= 74 ? 520000 : overall >= 70 ? 340000 : overall >= 66 ? 220000 : 120000),
         contractYears: data.contractYears ?? 2,
-        morale: data.morale ?? 78,
-        form: data.form ?? 76,
-        teamwork: data.teamwork ?? 75,
-        discipline: data.discipline ?? 74,
-        championPool: data.championPool ?? 74,
-        clutch: data.clutch ?? 73,
-        shotcalling: data.shotcalling ?? 70,
-        laneStrength: data.laneStrength ?? 74,
-        teamfight: data.teamfight ?? 75,
+        morale: data.morale ?? 72,
+        form: data.form ?? 70,
+        teamwork: data.teamwork ?? 69,
+        discipline: data.discipline ?? 69,
+        championPool: data.championPool ?? 69,
+        clutch: data.clutch ?? 67,
+        shotcalling: data.shotcalling ?? 66,
+        laneStrength: data.laneStrength ?? 69,
+        teamfight: data.teamfight ?? 69,
         status: data.status ?? PlayerStatus.STARTER,
     };
+}
+
+function createWeakPlayerRoster(): SeedPlayer[] {
+    return [
+        makePlayer({
+            nickname: "Makes",
+            role: Role.TOP,
+            overall: 65,
+            potential: 75,
+            laneStrength: 66,
+            teamfight: 65,
+            teamwork: 69,
+        }),
+        makePlayer({
+            nickname: "Drakez",
+            role: Role.JG,
+            overall: 64,
+            potential: 76,
+            shotcalling: 68,
+            teamwork: 70,
+            clutch: 65,
+        }),
+        makePlayer({
+            nickname: "Krownz",
+            role: Role.MID,
+            overall: 66,
+            potential: 77,
+            laneStrength: 68,
+            championPool: 69,
+            clutch: 67,
+        }),
+        makePlayer({
+            nickname: "Nexus",
+            role: Role.ADC,
+            overall: 65,
+            potential: 76,
+            laneStrength: 67,
+            teamfight: 66,
+        }),
+        makePlayer({
+            nickname: "Astra",
+            role: Role.SUP,
+            overall: 64,
+            potential: 75,
+            shotcalling: 70,
+            teamwork: 71,
+            teamfight: 66,
+        }),
+        makePlayer({
+            nickname: "Kobe",
+            role: Role.TOP,
+            overall: 61,
+            potential: 71,
+            status: PlayerStatus.BENCH,
+        }),
+        makePlayer({
+            nickname: "Mako",
+            role: Role.ADC,
+            overall: 61,
+            potential: 72,
+            status: PlayerStatus.BENCH,
+        }),
+    ];
 }
 
 function createGenericRoster(baseName: string, division: Division): SeedPlayer[] {
@@ -113,93 +181,6 @@ function createGenericRoster(baseName: string, division: Division): SeedPlayer[]
     ];
 }
 
-function createRealPlayerRoster(): SeedPlayer[] {
-    return [
-        makePlayer({
-            nickname: "Robo",
-            role: Role.TOP,
-            nationality: "BR",
-            age: 27,
-            overall: 79,
-            potential: 82,
-            laneStrength: 81,
-            teamfight: 79,
-            clutch: 78,
-            teamwork: 76,
-        }),
-        makePlayer({
-            nickname: "CarioK",
-            role: Role.JG,
-            nationality: "BR",
-            age: 25,
-            overall: 78,
-            potential: 82,
-            shotcalling: 79,
-            teamwork: 78,
-            teamfight: 78,
-            clutch: 77,
-        }),
-        makePlayer({
-            nickname: "tinowns",
-            role: Role.MID,
-            nationality: "BR",
-            age: 28,
-            overall: 80,
-            potential: 82,
-            laneStrength: 82,
-            championPool: 80,
-            clutch: 79,
-            teamfight: 80,
-        }),
-        makePlayer({
-            nickname: "Route",
-            role: Role.ADC,
-            nationality: "KR",
-            age: 24,
-            overall: 79,
-            potential: 83,
-            laneStrength: 80,
-            teamfight: 81,
-            clutch: 78,
-            teamwork: 74,
-        }),
-        makePlayer({
-            nickname: "Ceos",
-            role: Role.SUP,
-            nationality: "BR",
-            age: 25,
-            overall: 77,
-            potential: 80,
-            shotcalling: 81,
-            teamwork: 79,
-            teamfight: 78,
-        }),
-        makePlayer({
-            nickname: "brTT",
-            role: Role.ADC,
-            nationality: "BR",
-            age: 35,
-            overall: 75,
-            potential: 75,
-            status: PlayerStatus.BENCH,
-            clutch: 81,
-            teamfight: 78,
-            laneStrength: 74,
-        }),
-        makePlayer({
-            nickname: "JoJo",
-            role: Role.TOP,
-            nationality: "BR",
-            age: 24,
-            overall: 71,
-            potential: 77,
-            status: PlayerStatus.BENCH,
-            laneStrength: 73,
-            teamfight: 70,
-        }),
-    ];
-}
-
 function createRealFreeAgents(): SeedPlayer[] {
     return [
         makePlayer({ nickname: "TitaN", role: Role.ADC, nationality: "BR", age: 25, overall: 78, potential: 81, status: PlayerStatus.FREE_AGENT, clutch: 79, laneStrength: 79 }),
@@ -217,6 +198,13 @@ function createRealFreeAgents(): SeedPlayer[] {
         makePlayer({ nickname: "Damage", role: Role.ADC, nationality: "BR", age: 23, overall: 72, potential: 78, status: PlayerStatus.FREE_AGENT }),
         makePlayer({ nickname: "RedBert", role: Role.SUP, nationality: "BR", age: 26, overall: 73, potential: 76, status: PlayerStatus.FREE_AGENT, shotcalling: 76 }),
         makePlayer({ nickname: "JojoC", role: Role.SUP, nationality: "BR", age: 22, overall: 71, potential: 78, status: PlayerStatus.FREE_AGENT, teamwork: 76 }),
+        makePlayer({ nickname: "brTT", role: Role.ADC, nationality: "BR", age: 35, overall: 75, potential: 75, status: PlayerStatus.FREE_AGENT, clutch: 81, teamfight: 78, laneStrength: 74 }),
+        makePlayer({ nickname: "tinowns", role: Role.MID, nationality: "BR", age: 28, overall: 80, potential: 82, status: PlayerStatus.FREE_AGENT, laneStrength: 82, championPool: 80, clutch: 79, teamfight: 80 }),
+        makePlayer({ nickname: "Robo", role: Role.TOP, nationality: "BR", age: 27, overall: 79, potential: 82, status: PlayerStatus.FREE_AGENT, laneStrength: 81, teamfight: 79, clutch: 78, teamwork: 76 }),
+        makePlayer({ nickname: "Ceos", role: Role.SUP, nationality: "BR", age: 25, overall: 77, potential: 80, status: PlayerStatus.FREE_AGENT, shotcalling: 81, teamwork: 79, teamfight: 78 }),
+        makePlayer({ nickname: "CarioK", role: Role.JG, nationality: "BR", age: 25, overall: 78, potential: 82, status: PlayerStatus.FREE_AGENT, shotcalling: 79, teamwork: 78, teamfight: 78, clutch: 77 }),
+        makePlayer({ nickname: "Route", role: Role.ADC, nationality: "KR", age: 24, overall: 79, potential: 83, status: PlayerStatus.FREE_AGENT, laneStrength: 80, teamfight: 81, clutch: 78, teamwork: 74 }),
+        makePlayer({ nickname: "Kaiwing", role: Role.SUP, nationality: "BR", age: 24, overall: 75, potential: 79, status: PlayerStatus.FREE_AGENT, shotcalling: 78, teamwork: 77 }),
     ];
 }
 
@@ -229,24 +217,24 @@ async function createStaffForTeam(teamId: string, division: Division, isPlayerTe
             {
                 name: isPlayerTeam ? "Ranger" : `Coach ${teamId.slice(-4)}`,
                 role: StaffRole.HEAD_COACH,
-                quality: isPlayerTeam ? 78 : baseQuality + Math.floor(Math.random() * 8),
-                salary: baseSalary,
+                quality: isPlayerTeam ? 70 : baseQuality + Math.floor(Math.random() * 8),
+                salary: isPlayerTeam ? 32000 : baseSalary,
                 contractYears: 2,
                 teamId,
             },
             {
                 name: isPlayerTeam ? "Analyst Mylon" : `Analyst ${teamId.slice(-4)}`,
                 role: StaffRole.ANALYST,
-                quality: isPlayerTeam ? 74 : baseQuality - 2 + Math.floor(Math.random() * 8),
-                salary: Math.floor(baseSalary * 0.75),
+                quality: isPlayerTeam ? 66 : baseQuality - 2 + Math.floor(Math.random() * 8),
+                salary: isPlayerTeam ? 22000 : Math.floor(baseSalary * 0.75),
                 contractYears: 2,
                 teamId,
             },
             {
-                name: isPlayerTeam ? "Manager Baiano" : `Manager ${teamId.slice(-4)}`,
+                name: isPlayerTeam ? "Manager Base" : `Manager ${teamId.slice(-4)}`,
                 role: StaffRole.MANAGER,
-                quality: isPlayerTeam ? 72 : baseQuality - 3 + Math.floor(Math.random() * 8),
-                salary: Math.floor(baseSalary * 0.7),
+                quality: isPlayerTeam ? 64 : baseQuality - 3 + Math.floor(Math.random() * 8),
+                salary: isPlayerTeam ? 18000 : Math.floor(baseSalary * 0.7),
                 contractYears: 2,
                 teamId,
             },
@@ -258,14 +246,14 @@ async function createRoundRobinMatches(seasonId: string, division: Division, tea
     const shuffled = [...teamIds];
     if (shuffled.length % 2 !== 0) return;
 
-    const teams = [...shuffled];
-    const rounds = teams.length - 1;
-    const matchesPerRound = teams.length / 2;
+    const teamsRotating = [...shuffled];
+    const rounds = teamsRotating.length - 1;
+    const matchesPerRound = teamsRotating.length / 2;
 
     for (let round = 0; round < rounds; round++) {
         for (let i = 0; i < matchesPerRound; i++) {
-            const home = teams[i];
-            const away = teams[teams.length - 1 - i];
+            const home = teamsRotating[i];
+            const away = teamsRotating[teamsRotating.length - 1 - i];
 
             if (!home || !away) continue;
 
@@ -282,10 +270,10 @@ async function createRoundRobinMatches(seasonId: string, division: Division, tea
             });
         }
 
-        const fixed = teams[0];
-        const rest = teams.slice(1);
+        const fixed = teamsRotating[0];
+        const rest = teamsRotating.slice(1);
         rest.unshift(rest.pop()!);
-        teams.splice(0, teams.length, fixed, ...rest);
+        teamsRotating.splice(0, teamsRotating.length, fixed, ...rest);
     }
 }
 
@@ -303,7 +291,7 @@ async function main() {
         });
 
         const roster = team.createdByPlayer
-            ? createRealPlayerRoster()
+            ? createWeakPlayerRoster()
             : createGenericRoster(team.shortName, team.division);
 
         for (const player of roster) {

@@ -1,5 +1,6 @@
 import { AdvanceWeekForm } from "@/components/dashboard/advance-week-form";
 import { NextSeasonForm } from "@/components/dashboard/next-season-form";
+import { TeamIdentityForm } from "@/components/dashboard/team-identity-form";
 import { TeamBadge } from "@/components/ui/team-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -83,8 +84,7 @@ export default async function DashboardPage() {
     const avgOverall =
         starters.length > 0
             ? Math.round(
-                starters.reduce((acc, player) => acc + player.overall, 0) /
-                starters.length
+                starters.reduce((acc, player) => acc + player.overall, 0) / starters.length
             )
             : 0;
 
@@ -148,6 +148,16 @@ export default async function DashboardPage() {
                             {season?.isFinished ? <NextSeasonForm /> : null}
                         </div>
                     </div>
+
+                    <div className="mt-6">
+                        <p className="mb-3 text-sm font-medium uppercase tracking-[0.16em] text-zinc-500">
+                            Personalizar identidade da org
+                        </p>
+                        <TeamIdentityForm
+                            currentName={team.name}
+                            currentShortName={team.shortName}
+                        />
+                    </div>
                 </div>
             ) : null}
 
@@ -210,7 +220,7 @@ export default async function DashboardPage() {
 
             <div className="mt-6 grid gap-6 xl:grid-cols-3">
                 <div className="xl:col-span-2 space-y-6">
-                    <SectionCard title="Próximas partidas">
+                    <SectionCard title="Confrontos da sua org">
                         {upcomingMatches.length === 0 ? (
                             <p className="text-sm text-zinc-400">Nenhuma partida encontrada.</p>
                         ) : (
@@ -218,25 +228,45 @@ export default async function DashboardPage() {
                                 {upcomingMatches.map((match) => (
                                     <div
                                         key={match.id}
-                                        className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4 md:flex-row md:items-center md:justify-between"
+                                        className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <TeamBadge shortName={match.homeTeam.shortName} size="sm" />
-                                            <div>
-                                                <p className="text-sm text-zinc-500">
-                                                    Semana {match.week} • {match.division} • MD{match.bestOf}
-                                                </p>
-                                                <p className="mt-1 font-semibold text-white">
-                                                    {match.homeTeam.shortName} vs {match.awayTeam.shortName}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-zinc-500">
+                                                Semana {match.week} • {match.division} • MD{match.bestOf}
+                                            </p>
                                             <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">
                                                 {match.phase === "REGULAR_SEASON" ? "Regular" : "Playoffs"}
                                             </span>
-                                            <TeamBadge shortName={match.awayTeam.shortName} size="sm" />
+                                        </div>
+
+                                        <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
+                                            <div className="flex items-center gap-3">
+                                                <TeamBadge shortName={match.homeTeam.shortName} size="sm" />
+                                                <div>
+                                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                                                        Mandante
+                                                    </p>
+                                                    <p className="font-semibold text-white">
+                                                        {match.homeTeam.name}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-center">
+                                                <p className="text-lg font-black text-cyan-300">VS</p>
+                                            </div>
+
+                                            <div className="flex items-center justify-end gap-3">
+                                                <div className="text-right">
+                                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                                                        Visitante
+                                                    </p>
+                                                    <p className="font-semibold text-white">
+                                                        {match.awayTeam.name}
+                                                    </p>
+                                                </div>
+                                                <TeamBadge shortName={match.awayTeam.shortName} size="sm" />
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
