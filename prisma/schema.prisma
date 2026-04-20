@@ -37,53 +37,68 @@ enum MatchPhase {
   PLAYOFFS
 }
 
-model Team {
-  id             String    @id @default(cuid())
-  name           String
-  shortName      String
-  division       Division
-  budget         Int
-  reputation     Int
-  fanbase        Int
-  wins           Int       @default(0)
-  losses         Int       @default(0)
-  facilityLevel  Int       @default(1)
-  createdByPlayer Boolean  @default(false)
+enum ScheduleAction {
+  REST
+  LIGHT
+  TACTICAL
+  INTENSE
+  INDIVIDUAL
+  REVIEW
+  PREP
+  MATCHDAY
+}
 
-  players        Player[]
-  staff          Staff[]
-  homeMatches    Match[]   @relation("HomeTeam")
-  awayMatches    Match[]   @relation("AwayTeam")
-  winnerMatches  Match[]   @relation("WinnerTeam")
+model Team {
+  id              String        @id @default(cuid())
+  name            String
+  shortName       String
+  division        Division
+  budget          Int
+  reputation      Int
+  fanbase         Int
+  wins            Int           @default(0)
+  losses          Int           @default(0)
+  facilityLevel   Int           @default(1)
+  createdByPlayer Boolean       @default(false)
+
+  players         Player[]
+  staff           Staff[]
+  weekPlans       TeamWeekPlan[]
+  homeMatches     Match[]       @relation("HomeTeam")
+  awayMatches     Match[]       @relation("AwayTeam")
+  winnerMatches   Match[]       @relation("WinnerTeam")
 
   @@unique([name])
   @@unique([shortName])
 }
 
 model Player {
-  id            String       @id @default(cuid())
-  nickname      String
-  nationality   String
-  age           Int
-  role          Role
-  overall       Int
-  potential     Int
-  salary        Int
-  marketValue   Int
-  contractYears Int
-  morale        Int
-  form          Int
-  teamwork      Int
-  discipline    Int
-  championPool  Int
-  clutch        Int
-  shotcalling   Int
-  laneStrength  Int
-  teamfight     Int
-  status        PlayerStatus @default(FREE_AGENT)
+  id             String        @id @default(cuid())
+  nickname       String
+  nationality    String
+  age            Int
+  role           Role
+  overall        Int
+  potential      Int
+  salary         Int
+  marketValue    Int
+  contractYears  Int
+  morale         Int
+  form           Int
+  fatigue        Int           @default(20)
+  teamwork       Int
+  discipline     Int
+  championPool   Int
+  clutch         Int
+  shotcalling    Int
+  laneStrength   Int
+  teamfight      Int
+  status         PlayerStatus  @default(FREE_AGENT)
+  moodNote       String        @default("Motivado")
+  careerHistory  String        @default("Base da carreira registrada.")
 
-  teamId        String?
-  team          Team?        @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  teamId         String?
+  team           Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([role])
@@ -105,40 +120,63 @@ model Staff {
 }
 
 model Season {
-  id            String   @id @default(cuid())
-  year          Int
-  currentPhase  MatchPhase @default(REGULAR_SEASON)
-  currentWeek   Int      @default(1)
-  isFinished    Boolean  @default(false)
+  id           String       @id @default(cuid())
+  year         Int
+  currentPhase MatchPhase   @default(REGULAR_SEASON)
+  currentWeek  Int          @default(1)
+  isFinished   Boolean      @default(false)
 
-  matches       Match[]
+  matches      Match[]
+  weekPlans    TeamWeekPlan[]
 
   @@unique([year])
 }
 
+model TeamWeekPlan {
+  id        String         @id @default(cuid())
+  week      Int
+  monday    ScheduleAction @default(REST)
+  tuesday   ScheduleAction @default(TACTICAL)
+  wednesday ScheduleAction @default(INDIVIDUAL)
+  thursday  ScheduleAction @default(LIGHT)
+  friday    ScheduleAction @default(REVIEW)
+  saturday  ScheduleAction @default(PREP)
+  sunday    ScheduleAction @default(MATCHDAY)
+
+  seasonId  String
+  season    Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+
+  teamId    String
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([seasonId, teamId, week])
+  @@index([seasonId])
+  @@index([teamId])
+}
+
 model Match {
-  id            String      @id @default(cuid())
-  week          Int
-  bestOf        Int
-  played        Boolean     @default(false)
-  homeScore     Int?
-  awayScore     Int?
-  summary       String?
+  id           String      @id @default(cuid())
+  week         Int
+  bestOf       Int
+  played       Boolean     @default(false)
+  homeScore    Int?
+  awayScore    Int?
+  summary      String?
 
-  division      Division
-  phase         MatchPhase
+  division     Division
+  phase        MatchPhase
 
-  seasonId      String
-  season        Season      @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  seasonId     String
+  season       Season      @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
-  homeTeamId    String
-  homeTeam      Team        @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  homeTeamId   String
+  homeTeam     Team        @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
 
-  awayTeamId    String
-  awayTeam      Team        @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+  awayTeamId   String
+  awayTeam     Team        @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
 
-  winnerTeamId  String?
-  winnerTeam    Team?       @relation("WinnerTeam", fields: [winnerTeamId], references: [id], onDelete: SetNull)
+  winnerTeamId String?
+  winnerTeam   Team?       @relation("WinnerTeam", fields: [winnerTeamId], references: [id], onDelete: SetNull)
 
   @@index([seasonId])
   @@index([homeTeamId])
@@ -147,10 +185,10 @@ model Match {
 }
 
 model SaveState {
-  id             String   @id @default(cuid())
+  id              String   @id @default(cuid())
   currentSeasonId String?
   playerTeamId    String?
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }

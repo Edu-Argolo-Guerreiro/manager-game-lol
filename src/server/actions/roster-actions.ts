@@ -3,6 +3,18 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+function getMoodFromMorale(morale: number) {
+    if (morale >= 85) return "Muito feliz com a org";
+    if (morale >= 72) return "Motivado";
+    if (morale >= 58) return "Neutro";
+    if (morale >= 45) return "Insatisfeito";
+    return "Frustrado com o momento";
+}
+
+function appendHistory(current: string, entry: string) {
+    return `${current}\n• ${entry}`;
+}
+
 export async function promoteToStarter(formData: FormData) {
     const playerId = String(formData.get("playerId") ?? "");
     if (!playerId) return;
@@ -13,22 +25,43 @@ export async function promoteToStarter(formData: FormData) {
 
     if (!player?.teamId) return;
 
-    await prisma.player.updateMany({
+    const currentStarter = await prisma.player.findFirst({
         where: {
             teamId: player.teamId,
             role: player.role,
             status: "STARTER",
         },
-        data: {
-            status: "BENCH",
-        },
     });
+
+    if (currentStarter && currentStarter.id !== player.id) {
+        const benchedMorale = Math.max(currentStarter.morale - 6, 1);
+
+        await prisma.player.update({
+            where: { id: currentStarter.id },
+            data: {
+                status: "BENCH",
+                morale: benchedMorale,
+                moodNote: getMoodFromMorale(benchedMorale),
+                careerHistory: appendHistory(
+                    currentStarter.careerHistory,
+                    "Perdeu a titularidade recentemente."
+                ),
+            },
+        });
+    }
+
+    const promotedMorale = Math.min(player.morale + 5, 100);
 
     await prisma.player.update({
         where: { id: player.id },
         data: {
             status: "STARTER",
-            morale: Math.min(player.morale + 3, 100),
+            morale: promotedMorale,
+            moodNote: getMoodFromMorale(promotedMorale),
+            careerHistory: appendHistory(
+                player.careerHistory,
+                "Assumiu a titularidade da equipe."
+            ),
         },
     });
 
@@ -59,11 +92,19 @@ export async function moveToBench(formData: FormData) {
 
     if (!anotherBenchSameRole) return;
 
+    const benchedMorale = Math.max(player.morale - 5, 1);
+    const promotedMorale = Math.min(anotherBenchSameRole.morale + 4, 100);
+
     await prisma.player.update({
         where: { id: player.id },
         data: {
             status: "BENCH",
-            morale: Math.max(player.morale - 4, 1),
+            morale: benchedMorale,
+            moodNote: getMoodFromMorale(benchedMorale),
+            careerHistory: appendHistory(
+                player.careerHistory,
+                "Foi movido para o banco de reservas."
+            ),
         },
     });
 
@@ -71,7 +112,12 @@ export async function moveToBench(formData: FormData) {
         where: { id: anotherBenchSameRole.id },
         data: {
             status: "STARTER",
-            morale: Math.min(anotherBenchSameRole.morale + 3, 100),
+            morale: promotedMorale,
+            moodNote: getMoodFromMorale(promotedMorale),
+            careerHistory: appendHistory(
+                anotherBenchSameRole.careerHistory,
+                "Subiu do banco para a equipe titular."
+            ),
         },
     });
 
@@ -120,17 +166,29 @@ export async function sellPlayer(formData: FormData) {
         data: {
             teamId: null,
             status: "FREE_AGENT",
-            morale: Math.max(player.morale - 6, 1),
+            morale: Math.max(player.morale - 8, 1),
+            moodNote: "Disponível no mercado após saída da org",
+            careerHistory: appendHistory(
+                player.careerHistory,
+                "Foi negociado e voltou ao mercado como free agent."
+            ),
             contractYears: 2,
         },
     });
 
     if (player.status === "STARTER" && replacement) {
+        const replacementMorale = Math.min(replacement.morale + 4, 100);
+
         await prisma.player.update({
             where: { id: replacement.id },
             data: {
                 status: "STARTER",
-                morale: Math.min(replacement.morale + 4, 100),
+                morale: replacementMorale,
+                moodNote: getMoodFromMorale(replacementMorale),
+                careerHistory: appendHistory(
+                    replacement.careerHistory,
+                    "Ganhou espaço após venda de um titular da posição."
+                ),
             },
         });
     }
@@ -148,4 +206,26 @@ export async function sellPlayer(formData: FormData) {
     revalidatePath("/market");
     revalidatePath("/dashboard");
     revalidatePath("/finances");
+}
+
+export async function updatePlayerMoodAfterSigning(playerId: string, teamName: string) {
+    const player = await prisma.player.findUnique({
+        where: { id: playerId },
+    });
+
+    if (!player) return;
+
+    const morale = Math.min(player.morale + 6, 100);
+
+    await prisma.player.update({
+        where: { id: playerId },
+        data: {
+            morale,
+            moodNote: getMoodFromMorale(morale),
+            careerHistory: appendHistory(
+                player.careerHistory,
+                `Assinou contrato com ${teamName}.`
+            ),
+        },
+    });
 }

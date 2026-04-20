@@ -2,6 +2,7 @@ export type SimPlayer = {
     overall: number;
     form: number;
     morale: number;
+    fatigue: number;
     teamwork: number;
     teamfight: number;
     clutch: number;
@@ -30,6 +31,9 @@ export function calculateTeamStrength(
     const avgMorale =
         starters.reduce((acc, player) => acc + player.morale, 0) / starters.length;
 
+    const avgFatigue =
+        starters.reduce((acc, player) => acc + player.fatigue, 0) / starters.length;
+
     const avgTeamwork =
         starters.reduce((acc, player) => acc + player.teamwork, 0) / starters.length;
 
@@ -50,6 +54,7 @@ export function calculateTeamStrength(
 
     const formBonus = (avgForm - 70) * 0.12;
     const moraleBonus = (avgMorale - 70) * 0.12;
+    const fatiguePenalty = avgFatigue * 0.12;
     const synergyBonus = (avgTeamwork - 70) * 0.1;
     const teamfightBonus = (avgTeamfight - 70) * 0.08;
     const clutchBonus = (avgClutch - 70) * 0.06;
@@ -63,7 +68,8 @@ export function calculateTeamStrength(
             moraleBonus +
             synergyBonus +
             teamfightBonus +
-            clutchBonus
+            clutchBonus -
+            fatiguePenalty
         ).toFixed(2)
     );
 }

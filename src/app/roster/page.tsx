@@ -1,9 +1,25 @@
 import { BenchForm } from "@/components/roster/bench-form";
+import { PlayerHistoryCard } from "@/components/roster/player-history-card";
 import { PromoteForm } from "@/components/roster/promote-form";
 import { SellPlayerForm } from "@/components/roster/sell-player-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { getPlayerTeam } from "@/server/services/team-service";
+
+function moodColor(mood: string) {
+    if (mood.includes("Muito feliz")) return "text-emerald-300";
+    if (mood.includes("Motivado")) return "text-cyan-300";
+    if (mood.includes("Neutro")) return "text-zinc-300";
+    if (mood.includes("Insatisfeito")) return "text-amber-300";
+    return "text-rose-300";
+}
+
+function fatigueColor(fatigue: number) {
+    if (fatigue <= 20) return "text-emerald-300";
+    if (fatigue <= 45) return "text-cyan-300";
+    if (fatigue <= 65) return "text-amber-300";
+    return "text-rose-300";
+}
 
 export default async function RosterPage() {
     const team = await getPlayerTeam();
@@ -15,7 +31,7 @@ export default async function RosterPage() {
         <div>
             <PageHeader
                 title="Elenco"
-                subtitle="Titulares e reservas da sua organização."
+                subtitle="Titulares, reservas, humor atual, fadiga e histórico básico dos jogadores."
             />
 
             <div className="grid gap-6 xl:grid-cols-2">
@@ -35,6 +51,9 @@ export default async function RosterPage() {
                                         <p className="text-sm text-zinc-400">
                                             {player.role} • {player.nationality} • {player.age} anos
                                         </p>
+                                        <p className={`mt-2 text-xs font-semibold ${moodColor(player.moodNote)}`}>
+                                            {player.moodNote}
+                                        </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-lg font-bold text-cyan-400">{player.overall}</p>
@@ -42,7 +61,7 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                                <div className="mt-4 grid grid-cols-4 gap-3 text-sm">
                                     <div className="rounded-lg bg-zinc-900 p-3">
                                         <p className="text-zinc-500">Potencial</p>
                                         <p className="font-semibold text-white">{player.potential}</p>
@@ -54,6 +73,12 @@ export default async function RosterPage() {
                                     <div className="rounded-lg bg-zinc-900 p-3">
                                         <p className="text-zinc-500">Forma</p>
                                         <p className="font-semibold text-white">{player.form}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Fadiga</p>
+                                        <p className={`font-semibold ${fatigueColor(player.fatigue)}`}>
+                                            {player.fatigue}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -101,6 +126,9 @@ export default async function RosterPage() {
                                         <p className="text-sm text-zinc-400">
                                             {player.role} • {player.nationality} • {player.age} anos
                                         </p>
+                                        <p className={`mt-2 text-xs font-semibold ${moodColor(player.moodNote)}`}>
+                                            {player.moodNote}
+                                        </p>
                                     </div>
                                     <div className="text-right">
                                         <p className="text-lg font-bold text-zinc-200">{player.overall}</p>
@@ -108,7 +136,7 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                                <div className="mt-4 grid grid-cols-4 gap-3 text-sm">
                                     <div className="rounded-lg bg-zinc-900 p-3">
                                         <p className="text-zinc-500">Potencial</p>
                                         <p className="font-semibold text-white">{player.potential}</p>
@@ -120,6 +148,12 @@ export default async function RosterPage() {
                                     <div className="rounded-lg bg-zinc-900 p-3">
                                         <p className="text-zinc-500">Forma</p>
                                         <p className="font-semibold text-white">{player.form}</p>
+                                    </div>
+                                    <div className="rounded-lg bg-zinc-900 p-3">
+                                        <p className="text-zinc-500">Fadiga</p>
+                                        <p className={`font-semibold ${fatigueColor(player.fatigue)}`}>
+                                            {player.fatigue}
+                                        </p>
                                     </div>
                                 </div>
 
@@ -148,6 +182,21 @@ export default async function RosterPage() {
                         {bench.length === 0 ? (
                             <p className="text-sm text-zinc-400">Nenhum reserva encontrado.</p>
                         ) : null}
+                    </div>
+                </SectionCard>
+            </div>
+
+            <div className="mt-6">
+                <SectionCard title="Histórico recente dos jogadores">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        {[...starters, ...bench].map((player) => (
+                            <PlayerHistoryCard
+                                key={player.id}
+                                nickname={player.nickname}
+                                moodNote={player.moodNote}
+                                history={player.careerHistory}
+                            />
+                        ))}
                     </div>
                 </SectionCard>
             </div>

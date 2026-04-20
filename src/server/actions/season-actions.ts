@@ -1,6 +1,6 @@
 "use server";
 
-import { Division, MatchPhase } from "@prisma/client";
+import { Division, MatchPhase, ScheduleAction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateTeamStrength } from "@/lib/sim/team-strength";
 import { generateMatchNarrative, simulateBestOf } from "@/lib/sim/match-engine";
@@ -71,6 +71,113 @@ async function applyMonthlyFinance(playerTeamId: string) {
     });
 }
 
+function clamp(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value));
+}
+
+async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
+    const players = await prisma.player.findMany({
+        where: { teamId },
+    });
+
+    for (const player of players) {
+        let morale = player.morale;
+        let form = player.form;
+        let fatigue = player.fatigue;
+        let teamwork = player.teamwork;
+        let championPool = player.championPool;
+        let laneStrength = player.laneStrength;
+
+        if (action === "REST") {
+            morale += 2;
+            fatigue -= 10;
+        }
+
+        if (action === "LIGHT") {
+            form += 1;
+            fatigue -= 2;
+        }
+
+        if (action === "TACTICAL") {
+            form += 1;
+            teamwork += 1;
+            fatigue += 4;
+            if (player.discipline < 68) morale -= 1;
+        }
+
+        if (action === "INTENSE") {
+            form += 2;
+            fatigue += 8;
+            if (player.discipline < 72) morale -= 2;
+        }
+
+        if (action === "INDIVIDUAL") {
+            laneStrength += 1;
+            championPool += 1;
+            fatigue += 5;
+            if (player.teamwork < 68) morale -= 1;
+        }
+
+        if (action === "REVIEW") {
+            teamwork += 1;
+            fatigue += 2;
+        }
+
+        if (action === "PREP") {
+            form += 1;
+            fatigue += 2;
+        }
+
+        if (action === "MATCHDAY") {
+            fatigue += 6;
+        }
+
+        await prisma.player.update({
+            where: { id: player.id },
+            data: {
+                morale: clamp(morale, 1, 100),
+                form: clamp(form, 1, 100),
+                fatigue: clamp(fatigue, 0, 100),
+                teamwork: clamp(teamwork, 1, 100),
+                championPool: clamp(championPool, 1, 100),
+                laneStrength: clamp(laneStrength, 1, 100),
+            },
+        });
+    }
+}
+
+async function applyWeekPlan(teamId: string, seasonId: string, week: number) {
+    const plan = await prisma.teamWeekPlan.upsert({
+        where: {
+            seasonId_teamId_week: {
+                seasonId,
+                teamId,
+                week,
+            },
+        },
+        update: {},
+        create: {
+            seasonId,
+            teamId,
+            week,
+        },
+    });
+
+    const weekdayActions: ScheduleAction[] = [
+        plan.monday,
+        plan.tuesday,
+        plan.wednesday,
+        plan.thursday,
+        plan.friday,
+        plan.saturday,
+        plan.sunday,
+    ];
+
+    for (const action of weekdayActions) {
+        await applyActionToPlayers(teamId, action);
+    }
+}
+
 export async function advanceWeek() {
     const save = await prisma.saveState.findFirst({
         orderBy: { createdAt: "desc" },
@@ -85,6 +192,10 @@ export async function advanceWeek() {
     if (!season || season.isFinished) return;
 
     const simulatedWeek = season.currentWeek;
+
+    if (save.playerTeamId) {
+        await applyWeekPlan(save.playerTeamId, season.id, simulatedWeek);
+    }
 
     const matches = await prisma.match.findMany({
         where: {
@@ -226,20 +337,12 @@ export async function startNextSeason() {
 
     const tier1Standings = await prisma.team.findMany({
         where: { division: Division.TIER1 },
-        orderBy: [
-            { wins: "desc" },
-            { losses: "asc" },
-            { reputation: "desc" },
-        ],
+        orderBy: [{ wins: "desc" }, { losses: "asc" }, { reputation: "desc" }],
     });
 
     const tier2Standings = await prisma.team.findMany({
         where: { division: Division.TIER2 },
-        orderBy: [
-            { wins: "desc" },
-            { losses: "asc" },
-            { reputation: "desc" },
-        ],
+        orderBy: [{ wins: "desc" }, { losses: "asc" }, { reputation: "desc" }],
     });
 
     const promoted = tier2Standings[0];

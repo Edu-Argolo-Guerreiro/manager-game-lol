@@ -3,6 +3,18 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+function appendHistory(current: string, entry: string) {
+    return `${current}\n• ${entry}`;
+}
+
+function getMoodFromMorale(morale: number) {
+    if (morale >= 85) return "Muito feliz com a org";
+    if (morale >= 72) return "Motivado";
+    if (morale >= 58) return "Neutro";
+    if (morale >= 45) return "Insatisfeito";
+    return "Frustrado com o momento";
+}
+
 export async function signFreeAgent(formData: FormData) {
     const playerId = String(formData.get("playerId") ?? "");
 
@@ -33,8 +45,9 @@ export async function signFreeAgent(formData: FormData) {
     if (team.budget < totalCost) return;
 
     const sameRolePlayers = team.players.filter((p) => p.role === player.role);
-
     const newStatus = sameRolePlayers.length === 0 ? "STARTER" : "BENCH";
+
+    const newMorale = Math.min(player.morale + 6, 100);
 
     await prisma.player.update({
         where: { id: player.id },
@@ -42,7 +55,12 @@ export async function signFreeAgent(formData: FormData) {
             teamId: team.id,
             status: newStatus,
             contractYears: 2,
-            morale: Math.min(player.morale + 5, 100),
+            morale: newMorale,
+            moodNote: getMoodFromMorale(newMorale),
+            careerHistory: appendHistory(
+                player.careerHistory,
+                `Foi contratado por ${team.name} e chegou como ${newStatus === "STARTER" ? "titular" : "reserva"}.`
+            ),
         },
     });
 
