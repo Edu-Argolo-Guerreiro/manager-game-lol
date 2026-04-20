@@ -1,6 +1,6 @@
 "use server";
 
-import { Division, MatchPhase, ScheduleAction } from "@prisma/client";
+import { Division, IndividualFocus, MatchPhase, ScheduleAction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateTeamStrength } from "@/lib/sim/team-strength";
 import { generateMatchNarrative, simulateBestOf } from "@/lib/sim/match-engine";
@@ -75,6 +75,66 @@ function clamp(value: number, min: number, max: number) {
     return Math.max(min, Math.min(max, value));
 }
 
+async function applyIndividualFocus(playerId: string, focus: IndividualFocus) {
+    const player = await prisma.player.findUnique({
+        where: { id: playerId },
+    });
+
+    if (!player || focus === "NONE") return;
+
+    let championPool = player.championPool;
+    let laneStrength = player.laneStrength;
+    let teamfight = player.teamfight;
+    let shotcalling = player.shotcalling;
+    let discipline = player.discipline;
+    let fatigue = player.fatigue;
+    let form = player.form;
+
+    if (focus === "FARM") {
+        laneStrength += 1;
+        form += 1;
+        fatigue += 2;
+    }
+
+    if (focus === "TEAMFIGHT") {
+        teamfight += 1;
+        fatigue += 2;
+    }
+
+    if (focus === "CHAMP_POOL") {
+        championPool += 1;
+        fatigue += 2;
+    }
+
+    if (focus === "SHOTCALLING") {
+        shotcalling += 1;
+        fatigue += 2;
+    }
+
+    if (focus === "LANING") {
+        laneStrength += 1;
+        fatigue += 2;
+    }
+
+    if (focus === "DISCIPLINE") {
+        discipline += 1;
+        fatigue += 1;
+    }
+
+    await prisma.player.update({
+        where: { id: player.id },
+        data: {
+            championPool: clamp(championPool, 1, 100),
+            laneStrength: clamp(laneStrength, 1, 100),
+            teamfight: clamp(teamfight, 1, 100),
+            shotcalling: clamp(shotcalling, 1, 100),
+            discipline: clamp(discipline, 1, 100),
+            fatigue: clamp(fatigue, 0, 100),
+            form: clamp(form, 1, 100),
+        },
+    });
+}
+
 async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
     const players = await prisma.player.findMany({
         where: { teamId },
@@ -116,6 +176,7 @@ async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
             championPool += 1;
             fatigue += 5;
             if (player.teamwork < 68) morale -= 1;
+            await applyIndividualFocus(player.id, player.individualFocus);
         }
 
         if (action === "REVIEW") {

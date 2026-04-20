@@ -48,6 +48,16 @@ enum ScheduleAction {
   MATCHDAY
 }
 
+enum IndividualFocus {
+  NONE
+  FARM
+  TEAMFIGHT
+  CHAMP_POOL
+  SHOTCALLING
+  LANING
+  DISCIPLINE
+}
+
 model Team {
   id              String        @id @default(cuid())
   name            String
@@ -73,32 +83,33 @@ model Team {
 }
 
 model Player {
-  id             String        @id @default(cuid())
-  nickname       String
-  nationality    String
-  age            Int
-  role           Role
-  overall        Int
-  potential      Int
-  salary         Int
-  marketValue    Int
-  contractYears  Int
-  morale         Int
-  form           Int
-  fatigue        Int           @default(20)
-  teamwork       Int
-  discipline     Int
-  championPool   Int
-  clutch         Int
-  shotcalling    Int
-  laneStrength   Int
-  teamfight      Int
-  status         PlayerStatus  @default(FREE_AGENT)
-  moodNote       String        @default("Motivado")
-  careerHistory  String        @default("Base da carreira registrada.")
+  id              String          @id @default(cuid())
+  nickname        String
+  nationality     String
+  age             Int
+  role            Role
+  overall         Int
+  potential       Int
+  salary          Int
+  marketValue     Int
+  contractYears   Int
+  morale          Int
+  form            Int
+  fatigue         Int             @default(20)
+  teamwork        Int
+  discipline      Int
+  championPool    Int
+  clutch          Int
+  shotcalling     Int
+  laneStrength    Int
+  teamfight       Int
+  individualFocus IndividualFocus @default(NONE)
+  status          PlayerStatus    @default(FREE_AGENT)
+  moodNote        String          @default("Motivado")
+  careerHistory   String          @default("Base da carreira registrada.")
 
-  teamId         String?
-  team           Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  teamId          String?
+  team            Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([role])

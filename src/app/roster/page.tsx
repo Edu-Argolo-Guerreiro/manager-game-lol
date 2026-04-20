@@ -1,4 +1,5 @@
 import { BenchForm } from "@/components/roster/bench-form";
+import { PlayerFocusForm } from "@/components/roster/player-focus-form";
 import { PlayerHistoryCard } from "@/components/roster/player-history-card";
 import { PromoteForm } from "@/components/roster/promote-form";
 import { SellPlayerForm } from "@/components/roster/sell-player-form";
@@ -21,6 +22,17 @@ function fatigueColor(fatigue: number) {
     return "text-rose-300";
 }
 
+function focusLabel(focus: string) {
+    if (focus === "NONE") return "Neutro";
+    if (focus === "FARM") return "Farm";
+    if (focus === "TEAMFIGHT") return "Teamfight";
+    if (focus === "CHAMP_POOL") return "Champion Pool";
+    if (focus === "SHOTCALLING") return "Shotcalling";
+    if (focus === "LANING") return "Lane";
+    if (focus === "DISCIPLINE") return "Disciplina";
+    return focus;
+}
+
 export default async function RosterPage() {
     const team = await getPlayerTeam();
 
@@ -31,7 +43,7 @@ export default async function RosterPage() {
         <div>
             <PageHeader
                 title="Elenco"
-                subtitle="Titulares, reservas, humor atual, fadiga e histórico básico dos jogadores."
+                subtitle="Titulares, reservas, humor, fadiga, foco individual e histórico."
             />
 
             <div className="grid gap-6 xl:grid-cols-2">
@@ -53,6 +65,9 @@ export default async function RosterPage() {
                                         </p>
                                         <p className={`mt-2 text-xs font-semibold ${moodColor(player.moodNote)}`}>
                                             {player.moodNote}
+                                        </p>
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Foco atual: {focusLabel(player.individualFocus)}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -97,6 +112,13 @@ export default async function RosterPage() {
                                     </div>
                                 </div>
 
+                                <div className="mt-4">
+                                    <PlayerFocusForm
+                                        playerId={player.id}
+                                        currentFocus={player.individualFocus}
+                                    />
+                                </div>
+
                                 <div className="mt-4 flex flex-wrap justify-end gap-2">
                                     <BenchForm playerId={player.id} />
                                     <SellPlayerForm playerId={player.id} />
@@ -128,6 +150,9 @@ export default async function RosterPage() {
                                         </p>
                                         <p className={`mt-2 text-xs font-semibold ${moodColor(player.moodNote)}`}>
                                             {player.moodNote}
+                                        </p>
+                                        <p className="mt-1 text-xs text-zinc-500">
+                                            Foco atual: {focusLabel(player.individualFocus)}
                                         </p>
                                     </div>
                                     <div className="text-right">
@@ -170,6 +195,13 @@ export default async function RosterPage() {
                                             R$ {Math.floor(player.marketValue * 0.74).toLocaleString("pt-BR")}
                                         </p>
                                     </div>
+                                </div>
+
+                                <div className="mt-4">
+                                    <PlayerFocusForm
+                                        playerId={player.id}
+                                        currentFocus={player.individualFocus}
+                                    />
                                 </div>
 
                                 <div className="mt-4 flex flex-wrap justify-end gap-2">
