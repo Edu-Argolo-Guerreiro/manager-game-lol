@@ -1,4 +1,5 @@
 import { AdvanceWeekForm } from "@/components/dashboard/advance-week-form";
+import { NextSeasonForm } from "@/components/dashboard/next-season-form";
 import { TeamBadge } from "@/components/ui/team-badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -87,6 +88,37 @@ export default async function DashboardPage() {
             )
             : 0;
 
+    const tier1Standings = await prisma.team.findMany({
+        where: { division: "TIER1" },
+        orderBy: [{ wins: "desc" }, { losses: "asc" }, { reputation: "desc" }],
+        select: {
+            id: true,
+            name: true,
+            shortName: true,
+            wins: true,
+            losses: true,
+            division: true,
+        },
+    });
+
+    const tier2Standings = await prisma.team.findMany({
+        where: { division: "TIER2" },
+        orderBy: [{ wins: "desc" }, { losses: "asc" }, { reputation: "desc" }],
+        select: {
+            id: true,
+            name: true,
+            shortName: true,
+            wins: true,
+            losses: true,
+            division: true,
+        },
+    });
+
+    const promotedPreview = season?.isFinished ? tier2Standings[0] : null;
+    const relegatedPreview = season?.isFinished
+        ? tier1Standings[tier1Standings.length - 1]
+        : null;
+
     return (
         <div>
             <PageHeader
@@ -112,13 +144,37 @@ export default async function DashboardPage() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-3">
-                            <AdvanceWeekForm />
-                            {season?.isFinished ? (
-                                <span className="rounded-xl border border-emerald-800 bg-emerald-950 px-4 py-3 text-sm font-medium text-emerald-300">
-                                    Temporada finalizada
-                                </span>
-                            ) : null}
+                            {!season?.isFinished ? <AdvanceWeekForm /> : null}
+                            {season?.isFinished ? <NextSeasonForm /> : null}
                         </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {season?.isFinished && promotedPreview && relegatedPreview ? (
+                <div className="mb-6 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl border border-emerald-900 bg-emerald-950/40 p-5">
+                        <p className="text-sm uppercase tracking-[0.18em] text-emerald-400">
+                            Promoção prevista
+                        </p>
+                        <p className="mt-2 text-2xl font-bold text-white">
+                            {promotedPreview.name}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-300">
+                            Campeão/subida do Tier 2 para o Tier 1
+                        </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-rose-900 bg-rose-950/40 p-5">
+                        <p className="text-sm uppercase tracking-[0.18em] text-rose-400">
+                            Rebaixamento previsto
+                        </p>
+                        <p className="mt-2 text-2xl font-bold text-white">
+                            {relegatedPreview.name}
+                        </p>
+                        <p className="mt-1 text-sm text-zinc-300">
+                            Último colocado do Tier 1 desce para o Tier 2
+                        </p>
                     </div>
                 </div>
             ) : null}

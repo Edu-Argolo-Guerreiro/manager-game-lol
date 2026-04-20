@@ -35,23 +35,23 @@ type SeedPlayer = {
 };
 
 const teams: SeedTeam[] = [
-    { name: "Aurora Stars", shortName: "AUR", division: Division.TIER2, budget: 1150000, reputation: 58, fanbase: 42000, createdByPlayer: true },
-    { name: "Black Falcons", shortName: "BLF", division: Division.TIER2, budget: 820000, reputation: 45, fanbase: 18000 },
-    { name: "Vortex Gaming", shortName: "VTX", division: Division.TIER2, budget: 870000, reputation: 47, fanbase: 21000 },
-    { name: "Solar Wolves", shortName: "SLW", division: Division.TIER2, budget: 790000, reputation: 43, fanbase: 17000 },
-    { name: "Iron Tempest", shortName: "IRT", division: Division.TIER2, budget: 830000, reputation: 44, fanbase: 19500 },
-    { name: "Nova Rage", shortName: "NVR", division: Division.TIER2, budget: 810000, reputation: 42, fanbase: 16000 },
-    { name: "Crimson Tide", shortName: "CRT", division: Division.TIER2, budget: 850000, reputation: 46, fanbase: 22000 },
-    { name: "Titan Forge", shortName: "TTF", division: Division.TIER2, budget: 800000, reputation: 44, fanbase: 18500 },
+    { name: "paiN Gaming Academy", shortName: "PNG.A", division: Division.TIER2, budget: 1150000, reputation: 58, fanbase: 42000, createdByPlayer: true },
+    { name: "RED Academy", shortName: "RED.A", division: Division.TIER2, budget: 820000, reputation: 45, fanbase: 18000 },
+    { name: "LOUD Academy", shortName: "LLL.A", division: Division.TIER2, budget: 870000, reputation: 47, fanbase: 21000 },
+    { name: "FURIA Academy", shortName: "FUR.A", division: Division.TIER2, budget: 790000, reputation: 43, fanbase: 17000 },
+    { name: "INTZ Academy", shortName: "ITZ.A", division: Division.TIER2, budget: 830000, reputation: 44, fanbase: 19500 },
+    { name: "Vivo Keyd Stars Academy", shortName: "VKS.A", division: Division.TIER2, budget: 810000, reputation: 42, fanbase: 16000 },
+    { name: "KaBuM! Academy", shortName: "KBM.A", division: Division.TIER2, budget: 850000, reputation: 46, fanbase: 22000 },
+    { name: "Liberty Academy", shortName: "LBR.A", division: Division.TIER2, budget: 800000, reputation: 44, fanbase: 18500 },
 
-    { name: "Phoenix Prime", shortName: "PHX", division: Division.TIER1, budget: 2100000, reputation: 78, fanbase: 120000 },
-    { name: "Royal Nexus", shortName: "RNX", division: Division.TIER1, budget: 2200000, reputation: 81, fanbase: 135000 },
-    { name: "Omega Rush", shortName: "OMG", division: Division.TIER1, budget: 2050000, reputation: 76, fanbase: 110000 },
-    { name: "Blue Horizon", shortName: "BLH", division: Division.TIER1, budget: 1980000, reputation: 74, fanbase: 98000 },
-    { name: "Thunder Core", shortName: "THC", division: Division.TIER1, budget: 2150000, reputation: 79, fanbase: 128000 },
-    { name: "Infinity Vipers", shortName: "IFV", division: Division.TIER1, budget: 2080000, reputation: 77, fanbase: 118000 },
-    { name: "Red Dominion", shortName: "RDD", division: Division.TIER1, budget: 2250000, reputation: 82, fanbase: 140000 },
-    { name: "Echo Force", shortName: "ECH", division: Division.TIER1, budget: 1950000, reputation: 73, fanbase: 92000 },
+    { name: "paiN Gaming", shortName: "PNG", division: Division.TIER1, budget: 2100000, reputation: 78, fanbase: 120000 },
+    { name: "LOUD", shortName: "LLL", division: Division.TIER1, budget: 2200000, reputation: 81, fanbase: 135000 },
+    { name: "FURIA", shortName: "FUR", division: Division.TIER1, budget: 2050000, reputation: 76, fanbase: 110000 },
+    { name: "RED Canids", shortName: "RED", division: Division.TIER1, budget: 1980000, reputation: 74, fanbase: 98000 },
+    { name: "Vivo Keyd Stars", shortName: "VKS", division: Division.TIER1, budget: 2150000, reputation: 79, fanbase: 128000 },
+    { name: "KaBuM! Esports", shortName: "KBM", division: Division.TIER1, budget: 2080000, reputation: 77, fanbase: 118000 },
+    { name: "INTZ", shortName: "ITZ", division: Division.TIER1, budget: 2250000, reputation: 82, fanbase: 140000 },
+    { name: "Liberty", shortName: "LBR", division: Division.TIER1, budget: 1950000, reputation: 73, fanbase: 92000 },
 ];
 
 function makePlayer(data: Partial<SeedPlayer> & Pick<SeedPlayer, "nickname" | "role" | "overall" | "potential">): SeedPlayer {
