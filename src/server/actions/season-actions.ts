@@ -42,6 +42,18 @@ async function createRoundRobinMatches(seasonId: string, division: Division, tea
     }
 }
 
+function clamp(value: number, min: number, max: number) {
+    return Math.max(min, Math.min(max, value));
+}
+
+function moodFromMorale(morale: number) {
+    if (morale >= 85) return "Muito feliz com a org";
+    if (morale >= 72) return "Motivado";
+    if (morale >= 58) return "Neutro";
+    if (morale >= 45) return "Insatisfeito";
+    return "Frustrado com o momento";
+}
+
 async function applyMonthlyFinance(playerTeamId: string) {
     const team = await prisma.team.findUnique({
         where: { id: playerTeamId },
@@ -55,8 +67,8 @@ async function applyMonthlyFinance(playerTeamId: string) {
 
     const playerPayroll = team.players.reduce((acc, player) => acc + player.salary, 0);
     const staffPayroll = team.staff.reduce((acc, staff) => acc + staff.salary, 0);
-
     const payroll = playerPayroll + staffPayroll;
+
     const sponsorIncome = 140000 + team.reputation * 1400;
     const fanIncome = Math.floor(team.fanbase * 2.2);
     const monthlyNet = sponsorIncome + fanIncome - payroll;
@@ -64,15 +76,67 @@ async function applyMonthlyFinance(playerTeamId: string) {
     await prisma.team.update({
         where: { id: team.id },
         data: {
-            budget: {
-                increment: monthlyNet,
-            },
+            budget: { increment: monthlyNet },
+            marketingActionsUsed: 0,
         },
     });
 }
 
-function clamp(value: number, min: number, max: number) {
-    return Math.max(min, Math.min(max, value));
+async function resetPlayerWeeklyDeltas(teamId: string) {
+    await prisma.player.updateMany({
+        where: { teamId },
+        data: {
+            lastMoraleDelta: 0,
+            lastFormDelta: 0,
+            lastFatigueDelta: 0,
+            lastOverallDelta: 0,
+        },
+    });
+}
+
+async function applyPlayerDelta(playerId: string, data: {
+    morale?: number;
+    form?: number;
+    fatigue?: number;
+    teamwork?: number;
+    championPool?: number;
+    laneStrength?: number;
+    teamfight?: number;
+    shotcalling?: number;
+    discipline?: number;
+    overall?: number;
+}) {
+    const player = await prisma.player.findUnique({
+        where: { id: playerId },
+    });
+
+    if (!player) return;
+
+    const nextMorale = clamp(data.morale ?? player.morale, 1, 100);
+    const nextForm = clamp(data.form ?? player.form, 1, 100);
+    const nextFatigue = clamp(data.fatigue ?? player.fatigue, 0, 100);
+    const nextOverall = clamp(data.overall ?? player.overall, 50, player.potential);
+
+    await prisma.player.update({
+        where: { id: player.id },
+        data: {
+            morale: nextMorale,
+            form: nextForm,
+            fatigue: nextFatigue,
+            teamwork: clamp(data.teamwork ?? player.teamwork, 1, 100),
+            championPool: clamp(data.championPool ?? player.championPool, 1, 100),
+            laneStrength: clamp(data.laneStrength ?? player.laneStrength, 1, 100),
+            teamfight: clamp(data.teamfight ?? player.teamfight, 1, 100),
+            shotcalling: clamp(data.shotcalling ?? player.shotcalling, 1, 100),
+            discipline: clamp(data.discipline ?? player.discipline, 1, 100),
+            overall: nextOverall,
+            lastMoraleDelta: nextMorale - player.morale,
+            lastFormDelta: nextForm - player.form,
+            lastFatigueDelta: nextFatigue - player.fatigue,
+            lastOverallDelta: nextOverall - player.overall,
+            moodNote: moodFromMorale(nextMorale),
+        },
+    });
 }
 
 async function applyIndividualFocus(playerId: string, focus: IndividualFocus) {
@@ -91,47 +155,46 @@ async function applyIndividualFocus(playerId: string, focus: IndividualFocus) {
     let form = player.form;
 
     if (focus === "FARM") {
-        laneStrength += 1;
+        laneStrength += 2;
         form += 1;
         fatigue += 2;
     }
 
     if (focus === "TEAMFIGHT") {
-        teamfight += 1;
+        teamfight += 2;
+        form += 1;
         fatigue += 2;
     }
 
     if (focus === "CHAMP_POOL") {
-        championPool += 1;
+        championPool += 2;
         fatigue += 2;
     }
 
     if (focus === "SHOTCALLING") {
-        shotcalling += 1;
+        shotcalling += 2;
         fatigue += 2;
     }
 
     if (focus === "LANING") {
-        laneStrength += 1;
+        laneStrength += 2;
         fatigue += 2;
     }
 
     if (focus === "DISCIPLINE") {
-        discipline += 1;
+        discipline += 2;
         fatigue += 1;
+        form += 1;
     }
 
-    await prisma.player.update({
-        where: { id: player.id },
-        data: {
-            championPool: clamp(championPool, 1, 100),
-            laneStrength: clamp(laneStrength, 1, 100),
-            teamfight: clamp(teamfight, 1, 100),
-            shotcalling: clamp(shotcalling, 1, 100),
-            discipline: clamp(discipline, 1, 100),
-            fatigue: clamp(fatigue, 0, 100),
-            form: clamp(form, 1, 100),
-        },
+    await applyPlayerDelta(player.id, {
+        championPool,
+        laneStrength,
+        teamfight,
+        shotcalling,
+        discipline,
+        fatigue,
+        form,
     });
 }
 
@@ -150,18 +213,19 @@ async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
 
         if (action === "REST") {
             morale += 2;
-            fatigue -= 10;
+            fatigue -= 16;
+            form += 1;
         }
 
         if (action === "LIGHT") {
             form += 1;
-            fatigue -= 2;
+            fatigue -= 5;
         }
 
         if (action === "TACTICAL") {
             form += 1;
             teamwork += 1;
-            fatigue += 4;
+            fatigue += 3;
             if (player.discipline < 68) morale -= 1;
         }
 
@@ -169,19 +233,20 @@ async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
             form += 2;
             fatigue += 8;
             if (player.discipline < 72) morale -= 2;
+            if (player.teamwork < 65) morale -= 1;
         }
 
         if (action === "INDIVIDUAL") {
             laneStrength += 1;
             championPool += 1;
-            fatigue += 5;
+            fatigue += 4;
             if (player.teamwork < 68) morale -= 1;
-            await applyIndividualFocus(player.id, player.individualFocus);
         }
 
         if (action === "REVIEW") {
             teamwork += 1;
-            fatigue += 2;
+            fatigue += 1;
+            morale += 1;
         }
 
         if (action === "PREP") {
@@ -193,17 +258,18 @@ async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
             fatigue += 6;
         }
 
-        await prisma.player.update({
-            where: { id: player.id },
-            data: {
-                morale: clamp(morale, 1, 100),
-                form: clamp(form, 1, 100),
-                fatigue: clamp(fatigue, 0, 100),
-                teamwork: clamp(teamwork, 1, 100),
-                championPool: clamp(championPool, 1, 100),
-                laneStrength: clamp(laneStrength, 1, 100),
-            },
+        await applyPlayerDelta(player.id, {
+            morale,
+            form,
+            fatigue,
+            teamwork,
+            championPool,
+            laneStrength,
         });
+
+        if (action === "INDIVIDUAL") {
+            await applyIndividualFocus(player.id, player.individualFocus);
+        }
     }
 }
 
@@ -239,6 +305,63 @@ async function applyWeekPlan(teamId: string, seasonId: string, week: number) {
     }
 }
 
+async function applyNaturalPerformanceDrift(teamId: string) {
+    const players = await prisma.player.findMany({
+        where: { teamId },
+    });
+
+    for (const player of players) {
+        let overall = player.overall;
+
+        if (player.form >= 84 && player.morale >= 78 && player.fatigue <= 32 && player.overall < player.potential) {
+            overall += 1;
+        }
+
+        if (player.fatigue >= 78 || player.morale <= 38) {
+            overall -= 1;
+        }
+
+        await applyPlayerDelta(player.id, {
+            overall,
+        });
+    }
+}
+
+async function applyDynamicReputation(playerTeamId: string, seasonId: string, week: number) {
+    const team = await prisma.team.findUnique({
+        where: { id: playerTeamId },
+    });
+
+    if (!team) return;
+
+    const weekMatches = await prisma.match.findMany({
+        where: {
+            seasonId,
+            week,
+            OR: [
+                { homeTeamId: playerTeamId },
+                { awayTeamId: playerTeamId },
+            ],
+        },
+    });
+
+    let delta = 0;
+
+    for (const match of weekMatches) {
+        if (match.winnerTeamId === playerTeamId) delta += 1;
+        else delta -= 1;
+    }
+
+    const rep = clamp(team.reputation + delta, 1, 100);
+
+    await prisma.team.update({
+        where: { id: playerTeamId },
+        data: {
+            reputation: rep,
+        },
+    });
+}
+
 export async function advanceWeek() {
     const save = await prisma.saveState.findFirst({
         orderBy: { createdAt: "desc" },
@@ -255,7 +378,9 @@ export async function advanceWeek() {
     const simulatedWeek = season.currentWeek;
 
     if (save.playerTeamId) {
+        await resetPlayerWeeklyDeltas(save.playerTeamId);
         await applyWeekPlan(save.playerTeamId, season.id, simulatedWeek);
+        await applyNaturalPerformanceDrift(save.playerTeamId);
     }
 
     const matches = await prisma.match.findMany({
@@ -343,6 +468,10 @@ export async function advanceWeek() {
         }
     }
 
+    if (save.playerTeamId) {
+        await applyDynamicReputation(save.playerTeamId, season.id, simulatedWeek);
+    }
+
     if (save.playerTeamId && simulatedWeek % 4 === 0) {
         await applyMonthlyFinance(save.playerTeamId);
     }
@@ -379,6 +508,7 @@ export async function advanceWeek() {
     revalidatePath("/market");
     revalidatePath("/staff");
     revalidatePath("/week-review");
+    revalidatePath("/scout");
 
     redirect(`/week-review?week=${simulatedWeek}`);
 }
@@ -435,6 +565,7 @@ export async function startNextSeason() {
         data: {
             wins: 0,
             losses: 0,
+            marketingActionsUsed: 0,
         },
     });
 
@@ -486,4 +617,5 @@ export async function startNextSeason() {
     revalidatePath("/roster");
     revalidatePath("/market");
     revalidatePath("/staff");
+    revalidatePath("/scout");
 }

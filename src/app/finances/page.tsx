@@ -31,13 +31,13 @@ export default async function FinancesPage() {
                 </SectionCard>
 
                 <SectionCard title="Folha jogadores">
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-rose-300">
                         R$ {playerPayroll.toLocaleString("pt-BR")}
                     </p>
                 </SectionCard>
 
                 <SectionCard title="Folha staff">
-                    <p className="text-2xl font-bold text-white">
+                    <p className="text-2xl font-bold text-rose-300">
                         R$ {staffPayroll.toLocaleString("pt-BR")}
                     </p>
                 </SectionCard>
@@ -72,7 +72,7 @@ export default async function FinancesPage() {
                     </div>
                 </SectionCard>
 
-                <SectionCard title="Despesas mensais">
+                <SectionCard title="Despesas e marketing">
                     <div className="space-y-3 text-sm">
                         <div className="flex items-center justify-between">
                             <span className="text-zinc-400">Jogadores</span>
@@ -84,6 +84,12 @@ export default async function FinancesPage() {
                             <span className="text-zinc-400">Staff</span>
                             <span className="font-medium text-rose-300">
                                 R$ {staffPayroll.toLocaleString("pt-BR")}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-zinc-400">Ações de marketing no mês</span>
+                            <span className="font-medium text-white">
+                                {team?.marketingActionsUsed ?? 0}/2
                             </span>
                         </div>
                     </div>

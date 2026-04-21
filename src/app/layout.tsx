@@ -13,6 +13,7 @@ const navItems = [
     { href: "/roster", label: "Elenco" },
     { href: "/market", label: "Mercado" },
     { href: "/staff", label: "Staff" },
+    { href: "/scout", label: "Scout" },
     { href: "/calendar", label: "Calendário" },
     { href: "/standings", label: "Classificação" },
     { href: "/finances", label: "Finanças" },

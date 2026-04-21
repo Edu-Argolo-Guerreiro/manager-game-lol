@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdvanceWeekForm } from "@/components/dashboard/advance-week-form";
 import { MarketingActionsForm } from "@/components/dashboard/marketing-actions-form";
 import { NextSeasonForm } from "@/components/dashboard/next-season-form";
@@ -7,7 +8,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 
 export default async function DashboardPage() {
     const save = await prisma.saveState.findFirst({
@@ -36,10 +36,7 @@ export default async function DashboardPage() {
                 where: {
                     seasonId: save.currentSeasonId,
                     played: false,
-                    OR: [
-                        { homeTeamId: save.playerTeamId },
-                        { awayTeamId: save.playerTeamId },
-                    ],
+                    OR: [{ homeTeamId: save.playerTeamId }, { awayTeamId: save.playerTeamId }],
                 },
                 include: {
                     homeTeam: true,
@@ -85,9 +82,12 @@ export default async function DashboardPage() {
 
     const avgOverall =
         starters.length > 0
-            ? Math.round(
-                starters.reduce((acc, player) => acc + player.overall, 0) / starters.length
-            )
+            ? Math.round(starters.reduce((acc, player) => acc + player.overall, 0) / starters.length)
+            : 0;
+
+    const avgFatigue =
+        starters.length > 0
+            ? Math.round(starters.reduce((acc, player) => acc + player.fatigue, 0) / starters.length)
             : 0;
 
     const tier1Standings = await prisma.team.findMany({
@@ -122,12 +122,8 @@ export default async function DashboardPage() {
         : null;
 
     const championTier1 = season?.isFinished ? tier1Standings[0] : null;
-    const yourPositionTier2 = team
-        ? tier2Standings.findIndex((item) => item.id === team.id) + 1
-        : 0;
-    const yourPositionTier1 = team
-        ? tier1Standings.findIndex((item) => item.id === team.id) + 1
-        : 0;
+    const yourPositionTier2 = team ? tier2Standings.findIndex((item) => item.id === team.id) + 1 : 0;
+    const yourPositionTier1 = team ? tier1Standings.findIndex((item) => item.id === team.id) + 1 : 0;
 
     return (
         <div>
@@ -147,8 +143,7 @@ export default async function DashboardPage() {
                                 </p>
                                 <h2 className="mt-1 text-3xl font-black text-white">{team.name}</h2>
                                 <p className="mt-2 text-sm text-zinc-400">
-                                    {team.division} • Reputação {team.reputation} • Torcida{" "}
-                                    {team.fanbase.toLocaleString("pt-BR")}
+                                    {team.division} • Reputação {team.reputation} • Torcida {team.fanbase.toLocaleString("pt-BR")}
                                 </p>
                             </div>
                         </div>
@@ -185,9 +180,7 @@ export default async function DashboardPage() {
                         <p className="text-sm uppercase tracking-[0.18em] text-emerald-400">
                             Promoção prevista
                         </p>
-                        <p className="mt-2 text-2xl font-bold text-white">
-                            {promotedPreview.name}
-                        </p>
+                        <p className="mt-2 text-2xl font-bold text-white">{promotedPreview.name}</p>
                         <p className="mt-1 text-sm text-zinc-300">
                             Campeão/subida do Tier 2 para o Tier 1
                         </p>
@@ -209,9 +202,7 @@ export default async function DashboardPage() {
                         <p className="text-sm uppercase tracking-[0.18em] text-rose-400">
                             Rebaixamento previsto
                         </p>
-                        <p className="mt-2 text-2xl font-bold text-white">
-                            {relegatedPreview.name}
-                        </p>
+                        <p className="mt-2 text-2xl font-bold text-white">{relegatedPreview.name}</p>
                         <p className="mt-1 text-sm text-zinc-300">
                             Último colocado do Tier 1 desce para o Tier 2
                         </p>
@@ -219,7 +210,7 @@ export default async function DashboardPage() {
                 </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
                 <StatCard
                     label="Organização"
                     value={team?.name ?? "Sem time"}
@@ -245,6 +236,11 @@ export default async function DashboardPage() {
                     label="Overall médio"
                     value={avgOverall}
                     helper="Média dos titulares"
+                />
+                <StatCard
+                    label="Fadiga média"
+                    value={avgFatigue}
+                    helper="Quanto menor, melhor"
                 />
             </div>
 
@@ -314,8 +310,7 @@ export default async function DashboardPage() {
                                             Semana {match.week} • {match.division}
                                         </p>
                                         <p className="mt-1 font-semibold text-white">
-                                            {match.homeTeam.shortName} {match.homeScore} x {match.awayScore}{" "}
-                                            {match.awayTeam.shortName}
+                                            {match.homeTeam.shortName} {match.homeScore} x {match.awayScore} {match.awayTeam.shortName}
                                         </p>
                                         <p className="mt-1 text-sm text-zinc-400">
                                             Vencedor: {match.winnerTeam?.shortName ?? "-"}
@@ -327,7 +322,7 @@ export default async function DashboardPage() {
                     </SectionCard>
 
                     <SectionCard title="Ações de marketing">
-                        <MarketingActionsForm />
+                        <MarketingActionsForm used={team?.marketingActionsUsed ?? 0} />
                     </SectionCard>
                 </div>
 
@@ -368,9 +363,7 @@ export default async function DashboardPage() {
                             <div className="flex items-center justify-between">
                                 <span className="text-zinc-400">Posição atual</span>
                                 <span className="font-medium text-white">
-                                    {team?.division === "TIER2"
-                                        ? yourPositionTier2 || "-"
-                                        : yourPositionTier1 || "-"}
+                                    {team?.division === "TIER2" ? yourPositionTier2 || "-" : yourPositionTier1 || "-"}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between">
@@ -390,7 +383,7 @@ export default async function DashboardPage() {
                                     <div>
                                         <p className="font-medium text-white">{player.nickname}</p>
                                         <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">
-                                            {player.role}
+                                            {player.role} • {player.individualFocus}
                                         </p>
                                     </div>
                                     <div className="text-right">

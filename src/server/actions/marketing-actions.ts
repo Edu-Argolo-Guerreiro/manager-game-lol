@@ -17,34 +17,9 @@ export async function runMarketingCampaign(formData: FormData) {
     });
 
     if (!team) return;
+    if (team.marketingActionsUsed >= 2) return;
 
     if (type === "social") {
-        const cost = 25000;
-        if (team.budget < cost) return;
-
-        await prisma.team.update({
-            where: { id: team.id },
-            data: {
-                budget: { decrement: cost },
-                fanbase: { increment: 1800 },
-            },
-        });
-    }
-
-    if (type === "merch") {
-        const cost = 40000;
-        if (team.budget < cost) return;
-
-        await prisma.team.update({
-            where: { id: team.id },
-            data: {
-                budget: { increment: 55000 },
-                fanbase: { increment: 900 },
-            },
-        });
-    }
-
-    if (type === "meet") {
         const cost = 30000;
         if (team.budget < cost) return;
 
@@ -52,8 +27,39 @@ export async function runMarketingCampaign(formData: FormData) {
             where: { id: team.id },
             data: {
                 budget: { decrement: cost },
-                fanbase: { increment: 2500 },
+                fanbase: { increment: 2200 },
                 reputation: { increment: 1 },
+                marketingActionsUsed: { increment: 1 },
+            },
+        });
+    }
+
+    if (type === "merch") {
+        const setupCost = 35000;
+        const grossReturn = 52000;
+        if (team.budget < setupCost) return;
+
+        await prisma.team.update({
+            where: { id: team.id },
+            data: {
+                budget: { increment: grossReturn - setupCost },
+                fanbase: { increment: 800 },
+                marketingActionsUsed: { increment: 1 },
+            },
+        });
+    }
+
+    if (type === "meet") {
+        const cost = 45000;
+        if (team.budget < cost) return;
+
+        await prisma.team.update({
+            where: { id: team.id },
+            data: {
+                budget: { decrement: cost },
+                fanbase: { increment: 3000 },
+                reputation: { increment: 2 },
+                marketingActionsUsed: { increment: 1 },
             },
         });
     }
