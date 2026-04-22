@@ -1,13 +1,22 @@
 type PageHeaderProps = {
     title: string;
     subtitle?: string;
+    rightSlot?: React.ReactNode;
 };
 
-export function PageHeader({ title, subtitle }: PageHeaderProps) {
+export function PageHeader({
+    title,
+    subtitle,
+    rightSlot,
+}: PageHeaderProps) {
     return (
-        <div className="mb-6">
-            <h1 className="text-3xl font-bold tracking-tight text-white">{title}</h1>
-            {subtitle ? <p className="mt-2 text-sm text-zinc-400">{subtitle}</p> : null}
+        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+                <h1 className="page-title">{title}</h1>
+                {subtitle ? <p className="page-subtitle mt-3">{subtitle}</p> : null}
+            </div>
+
+            {rightSlot ? <div>{rightSlot}</div> : null}
         </div>
     );
 }

@@ -1,6 +1,12 @@
 "use server";
 
-import { Division, IndividualFocus, MatchDay, MatchPhase, ScheduleAction } from "@prisma/client";
+import {
+    Division,
+    IndividualFocus,
+    MatchDay,
+    MatchPhase,
+    ScheduleAction,
+} from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { calculateTeamStrength } from "@/lib/sim/team-strength";
 import { generateMatchNarrative, simulateBestOf } from "@/lib/sim/match-engine";
@@ -16,6 +22,19 @@ type StandingTeam = {
     wins: number;
     losses: number;
     reputation: number;
+};
+
+type SeriesMatch = {
+    id: string;
+    seasonId: string;
+    division: Division;
+    homeTeamId: string;
+    awayTeamId: string;
+    winnerTeamId: string | null;
+    played: boolean;
+    playoffRound: string | null;
+    homeScore: number | null;
+    awayScore: number | null;
 };
 
 async function createWeekendDoubleRoundRobin(
@@ -126,118 +145,243 @@ async function getDivisionStandings(division: Division): Promise<StandingTeam[]>
     });
 }
 
-async function createInitialPlayoffsForDivision(
+function loserOf(match: SeriesMatch) {
+    if (!match.winnerTeamId) return null;
+    return match.winnerTeamId === match.homeTeamId ? match.awayTeamId : match.homeTeamId;
+}
+
+async function getPlayoffMatch(
     seasonId: string,
     division: Division,
-    week: number
+    playoffRound: string
 ) {
-    const existingPlayoffs = await prisma.match.count({
+    return prisma.match.findFirst({
         where: {
             seasonId,
             division,
             phase: MatchPhase.PLAYOFFS,
+            playoffRound,
         },
     });
+}
 
-    if (existingPlayoffs > 0) return false;
-
+async function createSixTeamDoubleElimNextSeries(
+    seasonId: string,
+    division: Division,
+    week: number
+) {
     const standings = await getDivisionStandings(division);
     const slots = getPlayoffSlots(standings.length);
+    if (slots !== 6) return false;
 
-    if (slots === 6) {
-        const seeds = standings.slice(0, 6);
-        if (seeds.length < 6) return false;
+    const seeds = standings.slice(0, 6);
+    if (seeds.length < 6) return false;
 
-        await prisma.match.createMany({
-            data: [
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "ROUND1-A",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SATURDAY,
-                    homeTeamId: seeds[2].id,
-                    awayTeamId: seeds[5].id,
-                },
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "ROUND1-B",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SUNDAY,
-                    homeTeamId: seeds[3].id,
-                    awayTeamId: seeds[4].id,
-                },
-            ],
+    const seedMap = new Map<string, number>();
+    seeds.forEach((team, index) => seedMap.set(team.id, index + 1));
+
+    const s1 = await getPlayoffMatch(seasonId, division, "S1");
+    const s2 = await getPlayoffMatch(seasonId, division, "S2");
+    const s3 = await getPlayoffMatch(seasonId, division, "S3");
+    const s4 = await getPlayoffMatch(seasonId, division, "S4");
+    const s5 = await getPlayoffMatch(seasonId, division, "S5");
+    const s6 = await getPlayoffMatch(seasonId, division, "S6");
+    const s7 = await getPlayoffMatch(seasonId, division, "S7");
+    const s8 = await getPlayoffMatch(seasonId, division, "S8");
+    const s9 = await getPlayoffMatch(seasonId, division, "S9");
+    const gf = await getPlayoffMatch(seasonId, division, "GF");
+
+    if (!s1) {
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S1",
+                week,
+                bestOf: 3,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: seeds[3].id,
+                awayTeamId: seeds[4].id,
+            },
+        });
+        return true;
+    }
+
+    if (s1.played && !s2) {
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S2",
+                week,
+                bestOf: 3,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: seeds[2].id,
+                awayTeamId: seeds[5].id,
+            },
+        });
+        return true;
+    }
+
+    if (s1.played && s2?.played && !s3) {
+        const w1 = s1.winnerTeamId!;
+        const w2 = s2.winnerTeamId!;
+        const seedW1 = seedMap.get(w1) ?? 99;
+        const seedW2 = seedMap.get(w2) ?? 99;
+
+        const seed1Opponent = seedW1 > seedW2 ? w1 : w2;
+        const seed2Opponent = seed1Opponent === w1 ? w2 : w1;
+
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S3",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: seeds[0].id,
+                awayTeamId: seed1Opponent,
+            },
+        });
+
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S4",
+                week: week + 1,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: seeds[1].id,
+                awayTeamId: seed2Opponent,
+            },
         });
 
         return true;
     }
 
-    if (slots === 8) {
-        const seeds = standings.slice(0, 8);
-        if (seeds.length < 8) return false;
+    if (s1.played && s4?.played && !s5) {
+        const loserS1 = loserOf(s1);
+        const loserS4 = loserOf(s4);
+        if (!loserS1 || !loserS4) return false;
 
-        await prisma.match.createMany({
-            data: [
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "QUARTER-1",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SATURDAY,
-                    homeTeamId: seeds[0].id,
-                    awayTeamId: seeds[7].id,
-                },
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "QUARTER-2",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SATURDAY,
-                    homeTeamId: seeds[3].id,
-                    awayTeamId: seeds[4].id,
-                },
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "QUARTER-3",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SUNDAY,
-                    homeTeamId: seeds[1].id,
-                    awayTeamId: seeds[6].id,
-                },
-                {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "QUARTER-4",
-                    week,
-                    bestOf: 3,
-                    matchDay: MatchDay.SUNDAY,
-                    homeTeamId: seeds[2].id,
-                    awayTeamId: seeds[5].id,
-                },
-            ],
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S5",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: loserS4,
+                awayTeamId: loserS1,
+            },
         });
+        return true;
+    }
 
+    if (s2?.played && s3?.played && !s6) {
+        const loserS2 = loserOf(s2);
+        const loserS3 = loserOf(s3);
+        if (!loserS2 || !loserS3) return false;
+
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S6",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: loserS3,
+                awayTeamId: loserS2,
+            },
+        });
+        return true;
+    }
+
+    if (s3?.played && s4?.played && !s7) {
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S7",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: s3.winnerTeamId!,
+                awayTeamId: s4.winnerTeamId!,
+            },
+        });
+        return true;
+    }
+
+    if (s5?.played && s6?.played && !s8) {
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S8",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: s5.winnerTeamId!,
+                awayTeamId: s6.winnerTeamId!,
+            },
+        });
+        return true;
+    }
+
+    if (s7?.played && s8?.played && !s9) {
+        const loserS7 = loserOf(s7);
+        if (!loserS7) return false;
+
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "S9",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: loserS7,
+                awayTeamId: s8.winnerTeamId!,
+            },
+        });
+        return true;
+    }
+
+    if (s7?.played && s9?.played && !gf) {
+        await prisma.match.create({
+            data: {
+                seasonId,
+                division,
+                phase: MatchPhase.PLAYOFFS,
+                playoffRound: "GF",
+                week,
+                bestOf: 5,
+                matchDay: MatchDay.SATURDAY,
+                homeTeamId: s7.winnerTeamId!,
+                awayTeamId: s9.winnerTeamId!,
+            },
+        });
         return true;
     }
 
     return false;
 }
 
-async function createNextPlayoffRoundForDivision(
+async function maybeCreateNextPlayoffSeriesForDivision(
     seasonId: string,
     division: Division,
     week: number
@@ -246,203 +390,7 @@ async function createNextPlayoffRoundForDivision(
     const slots = getPlayoffSlots(standings.length);
 
     if (slots === 6) {
-        const round1A = await prisma.match.findFirst({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "ROUND1-A",
-                played: true,
-            },
-        });
-
-        const round1B = await prisma.match.findFirst({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "ROUND1-B",
-                played: true,
-            },
-        });
-
-        const semisAlready = await prisma.match.count({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: { in: ["SEMI-1", "SEMI-2"] },
-            },
-        });
-
-        if (round1A && round1B && semisAlready === 0) {
-            const seeds = standings.slice(0, 6);
-
-            await prisma.match.createMany({
-                data: [
-                    {
-                        seasonId,
-                        division,
-                        phase: MatchPhase.PLAYOFFS,
-                        playoffRound: "SEMI-1",
-                        week,
-                        bestOf: 5,
-                        matchDay: MatchDay.SATURDAY,
-                        homeTeamId: seeds[0].id,
-                        awayTeamId: round1B.winnerTeamId!,
-                    },
-                    {
-                        seasonId,
-                        division,
-                        phase: MatchPhase.PLAYOFFS,
-                        playoffRound: "SEMI-2",
-                        week,
-                        bestOf: 5,
-                        matchDay: MatchDay.SUNDAY,
-                        homeTeamId: seeds[1].id,
-                        awayTeamId: round1A.winnerTeamId!,
-                    },
-                ],
-            });
-
-            return true;
-        }
-
-        const semi1 = await prisma.match.findFirst({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "SEMI-1",
-                played: true,
-            },
-        });
-
-        const semi2 = await prisma.match.findFirst({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "SEMI-2",
-                played: true,
-            },
-        });
-
-        const finalAlready = await prisma.match.count({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "FINAL",
-            },
-        });
-
-        if (semi1 && semi2 && finalAlready === 0) {
-            await prisma.match.create({
-                data: {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "FINAL",
-                    week,
-                    bestOf: 5,
-                    matchDay: MatchDay.SUNDAY,
-                    homeTeamId: semi1.winnerTeamId!,
-                    awayTeamId: semi2.winnerTeamId!,
-                },
-            });
-
-            return true;
-        }
-    }
-
-    if (slots === 8) {
-        const q1 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "QUARTER-1", played: true },
-        });
-        const q2 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "QUARTER-2", played: true },
-        });
-        const q3 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "QUARTER-3", played: true },
-        });
-        const q4 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "QUARTER-4", played: true },
-        });
-
-        const semisAlready = await prisma.match.count({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: { in: ["SEMI-1", "SEMI-2"] },
-            },
-        });
-
-        if (q1 && q2 && q3 && q4 && semisAlready === 0) {
-            await prisma.match.createMany({
-                data: [
-                    {
-                        seasonId,
-                        division,
-                        phase: MatchPhase.PLAYOFFS,
-                        playoffRound: "SEMI-1",
-                        week,
-                        bestOf: 5,
-                        matchDay: MatchDay.SATURDAY,
-                        homeTeamId: q1.winnerTeamId!,
-                        awayTeamId: q2.winnerTeamId!,
-                    },
-                    {
-                        seasonId,
-                        division,
-                        phase: MatchPhase.PLAYOFFS,
-                        playoffRound: "SEMI-2",
-                        week,
-                        bestOf: 5,
-                        matchDay: MatchDay.SUNDAY,
-                        homeTeamId: q3.winnerTeamId!,
-                        awayTeamId: q4.winnerTeamId!,
-                    },
-                ],
-            });
-
-            return true;
-        }
-
-        const semi1 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "SEMI-1", played: true },
-        });
-        const semi2 = await prisma.match.findFirst({
-            where: { seasonId, division, phase: MatchPhase.PLAYOFFS, playoffRound: "SEMI-2", played: true },
-        });
-
-        const finalAlready = await prisma.match.count({
-            where: {
-                seasonId,
-                division,
-                phase: MatchPhase.PLAYOFFS,
-                playoffRound: "FINAL",
-            },
-        });
-
-        if (semi1 && semi2 && finalAlready === 0) {
-            await prisma.match.create({
-                data: {
-                    seasonId,
-                    division,
-                    phase: MatchPhase.PLAYOFFS,
-                    playoffRound: "FINAL",
-                    week,
-                    bestOf: 5,
-                    matchDay: MatchDay.SUNDAY,
-                    homeTeamId: semi1.winnerTeamId!,
-                    awayTeamId: semi2.winnerTeamId!,
-                },
-            });
-
-            return true;
-        }
+        return createSixTeamDoubleElimNextSeries(seasonId, division, week);
     }
 
     return false;
@@ -476,6 +424,63 @@ async function applyMonthlyFinance(playerTeamId: string) {
     });
 }
 
+async function applyPlayoffPrizes(seasonId: string) {
+    const divisions: Division[] = [Division.TIER1, Division.TIER2];
+
+    for (const division of divisions) {
+        const gf = await getPlayoffMatch(seasonId, division, "GF");
+        if (!gf?.played || !gf.winnerTeamId) continue;
+
+        const runnerUpId = loserOf(gf);
+        const s9 = await getPlayoffMatch(seasonId, division, "S9");
+        const thirdPlaceId = s9?.played ? loserOf(s9) : null;
+
+        const rewards =
+            division === Division.TIER1
+                ? {
+                    first: { budget: 700000, reputation: 6, fanbase: 18000 },
+                    second: { budget: 350000, reputation: 3, fanbase: 9000 },
+                    third: { budget: 180000, reputation: 2, fanbase: 5000 },
+                }
+                : {
+                    first: { budget: 400000, reputation: 5, fanbase: 12000 },
+                    second: { budget: 220000, reputation: 3, fanbase: 7000 },
+                    third: { budget: 100000, reputation: 2, fanbase: 3500 },
+                };
+
+        await prisma.team.update({
+            where: { id: gf.winnerTeamId },
+            data: {
+                budget: { increment: rewards.first.budget },
+                reputation: { increment: rewards.first.reputation },
+                fanbase: { increment: rewards.first.fanbase },
+            },
+        });
+
+        if (runnerUpId) {
+            await prisma.team.update({
+                where: { id: runnerUpId },
+                data: {
+                    budget: { increment: rewards.second.budget },
+                    reputation: { increment: rewards.second.reputation },
+                    fanbase: { increment: rewards.second.fanbase },
+                },
+            });
+        }
+
+        if (thirdPlaceId) {
+            await prisma.team.update({
+                where: { id: thirdPlaceId },
+                data: {
+                    budget: { increment: rewards.third.budget },
+                    reputation: { increment: rewards.third.reputation },
+                    fanbase: { increment: rewards.third.fanbase },
+                },
+            });
+        }
+    }
+}
+
 async function resetPlayerWeeklyDeltas(teamId: string) {
     await prisma.player.updateMany({
         where: { teamId },
@@ -488,18 +493,21 @@ async function resetPlayerWeeklyDeltas(teamId: string) {
     });
 }
 
-async function applyPlayerDelta(playerId: string, data: {
-    morale?: number;
-    form?: number;
-    fatigue?: number;
-    teamwork?: number;
-    championPool?: number;
-    laneStrength?: number;
-    teamfight?: number;
-    shotcalling?: number;
-    discipline?: number;
-    overall?: number;
-}) {
+async function applyPlayerDelta(
+    playerId: string,
+    data: {
+        morale?: number;
+        form?: number;
+        fatigue?: number;
+        teamwork?: number;
+        championPool?: number;
+        laneStrength?: number;
+        teamfight?: number;
+        shotcalling?: number;
+        discipline?: number;
+        overall?: number;
+    }
+) {
     const player = await prisma.player.findUnique({
         where: { id: playerId },
     });
@@ -667,6 +675,22 @@ async function applyActionToPlayers(teamId: string, action: ScheduleAction) {
     }
 }
 
+async function applyPlayoffSeriesFatigue(teamId: string) {
+    const starters = await prisma.player.findMany({
+        where: {
+            teamId,
+            status: "STARTER",
+        },
+    });
+
+    for (const player of starters) {
+        await applyPlayerDelta(player.id, {
+            fatigue: player.fatigue + 8,
+            morale: player.morale - 1,
+        });
+    }
+}
+
 async function applyWeekPlan(teamId: string, seasonId: string, week: number) {
     const plan = await prisma.teamWeekPlan.upsert({
         where: {
@@ -709,7 +733,12 @@ async function applyNaturalPerformanceDrift(teamId: string) {
     for (const player of players) {
         let overall = player.overall;
 
-        if (player.form >= 84 && player.morale >= 78 && player.fatigue <= 32 && player.overall < player.potential) {
+        if (
+            player.form >= 84 &&
+            player.morale >= 78 &&
+            player.fatigue <= 32 &&
+            player.overall < player.potential
+        ) {
             overall += 1;
         }
 
@@ -723,7 +752,11 @@ async function applyNaturalPerformanceDrift(teamId: string) {
     }
 }
 
-async function applyDynamicReputation(playerTeamId: string, seasonId: string, week: number) {
+async function applyDynamicReputation(
+    playerTeamId: string,
+    seasonId: string,
+    week: number
+) {
     const team = await prisma.team.findUnique({
         where: { id: playerTeamId },
     });
@@ -903,21 +936,24 @@ export async function advanceWeek() {
             : match.awayTeam.shortName;
 
         const dayLabel = match.matchDay === "SATURDAY" ? "Sábado" : "Domingo";
-        const playoffPrefix = match.phase === "PLAYOFFS" && match.playoffRound
-            ? `${match.playoffRound} • `
-            : "";
+        const playoffPrefix =
+            match.phase === "PLAYOFFS" && match.playoffRound
+                ? `${match.playoffRound} • `
+                : "";
 
-        const summary = `${playoffPrefix}${dayLabel}. ` + generateMatchNarrative({
-            homeTeamName: match.homeTeam.name,
-            awayTeamName: match.awayTeam.name,
-            homeShortName: match.homeTeam.shortName,
-            awayShortName: match.awayTeam.shortName,
-            homeStrength,
-            awayStrength,
-            homeScore: result.homeScore,
-            awayScore: result.awayScore,
-            winnerShortName,
-        });
+        const summary =
+            `${playoffPrefix}${dayLabel}. ` +
+            generateMatchNarrative({
+                homeTeamName: match.homeTeam.name,
+                awayTeamName: match.awayTeam.name,
+                homeShortName: match.homeTeam.shortName,
+                awayShortName: match.awayTeam.shortName,
+                homeStrength,
+                awayStrength,
+                homeScore: result.homeScore,
+                awayScore: result.awayScore,
+                winnerShortName,
+            });
 
         await prisma.match.update({
             where: { id: match.id },
@@ -930,26 +966,33 @@ export async function advanceWeek() {
             },
         });
 
-        if (result.homeWon) {
-            await prisma.team.update({
-                where: { id: match.homeTeamId },
-                data: { wins: { increment: 1 } },
-            });
+        if (match.phase === "REGULAR_SEASON") {
+            if (result.homeWon) {
+                await prisma.team.update({
+                    where: { id: match.homeTeamId },
+                    data: { wins: { increment: 1 } },
+                });
 
-            await prisma.team.update({
-                where: { id: match.awayTeamId },
-                data: { losses: { increment: 1 } },
-            });
-        } else {
-            await prisma.team.update({
-                where: { id: match.awayTeamId },
-                data: { wins: { increment: 1 } },
-            });
+                await prisma.team.update({
+                    where: { id: match.awayTeamId },
+                    data: { losses: { increment: 1 } },
+                });
+            } else {
+                await prisma.team.update({
+                    where: { id: match.awayTeamId },
+                    data: { wins: { increment: 1 } },
+                });
 
-            await prisma.team.update({
-                where: { id: match.homeTeamId },
-                data: { losses: { increment: 1 } },
-            });
+                await prisma.team.update({
+                    where: { id: match.homeTeamId },
+                    data: { losses: { increment: 1 } },
+                });
+            }
+        }
+
+        if (match.phase === "PLAYOFFS") {
+            await applyPlayoffSeriesFatigue(match.homeTeamId);
+            await applyPlayoffSeriesFatigue(match.awayTeamId);
         }
     }
 
@@ -964,33 +1007,18 @@ export async function advanceWeek() {
     let createdPlayoffs = false;
 
     if (remainingRegular === 0) {
-        const tier1Created = await createInitialPlayoffsForDivision(
+        const tier1Created = await maybeCreateNextPlayoffSeriesForDivision(
             season.id,
             Division.TIER1,
             simulatedWeek + 1
         );
-        const tier2Created = await createInitialPlayoffsForDivision(
+        const tier2Created = await maybeCreateNextPlayoffSeriesForDivision(
             season.id,
             Division.TIER2,
             simulatedWeek + 1
         );
 
         createdPlayoffs = tier1Created || tier2Created;
-
-        if (!createdPlayoffs) {
-            const nextTier1 = await createNextPlayoffRoundForDivision(
-                season.id,
-                Division.TIER1,
-                simulatedWeek + 1
-            );
-            const nextTier2 = await createNextPlayoffRoundForDivision(
-                season.id,
-                Division.TIER2,
-                simulatedWeek + 1
-            );
-
-            createdPlayoffs = nextTier1 || nextTier2;
-        }
     }
 
     if (save.playerTeamId) {
@@ -1010,6 +1038,8 @@ export async function advanceWeek() {
     });
 
     if (remainingMatches === 0 && !createdPlayoffs) {
+        await applyPlayoffPrizes(season.id);
+
         await prisma.season.update({
             where: { id: season.id },
             data: {
@@ -1021,7 +1051,8 @@ export async function advanceWeek() {
             where: { id: season.id },
             data: {
                 currentWeek: { increment: 1 },
-                currentPhase: remainingRegular > 0 ? MatchPhase.REGULAR_SEASON : MatchPhase.PLAYOFFS,
+                currentPhase:
+                    remainingRegular > 0 ? MatchPhase.REGULAR_SEASON : MatchPhase.PLAYOFFS,
             },
         });
     }
@@ -1036,6 +1067,7 @@ export async function advanceWeek() {
     revalidatePath("/staff");
     revalidatePath("/week-review");
     revalidatePath("/scout");
+    revalidatePath("/playoffs");
 
     redirect(`/week-review?week=${simulatedWeek}`);
 }
@@ -1145,4 +1177,5 @@ export async function startNextSeason() {
     revalidatePath("/market");
     revalidatePath("/staff");
     revalidatePath("/scout");
+    revalidatePath("/playoffs");
 }

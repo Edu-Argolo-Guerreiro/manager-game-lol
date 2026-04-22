@@ -4,16 +4,15 @@ type TeamBadgeProps = {
 };
 
 export function TeamBadge({ shortName, size = "md" }: TeamBadgeProps) {
-    const sizeClass =
-        size === "sm"
-            ? "h-9 w-9 text-xs"
-            : size === "lg"
-                ? "h-14 w-14 text-lg"
-                : "h-11 w-11 text-sm";
+    const sizeMap = {
+        sm: "h-10 w-10 text-xs rounded-xl",
+        md: "h-14 w-14 text-sm rounded-2xl",
+        lg: "h-18 w-18 text-lg rounded-[22px]",
+    };
 
     return (
         <div
-            className={`flex ${sizeClass} items-center justify-center rounded-2xl border border-cyan-900 bg-gradient-to-br from-cyan-500/20 to-blue-500/10 font-bold tracking-wide text-cyan-300 shadow-inner`}
+            className={`glow-blue inline-flex items-center justify-center border border-[rgba(90,140,255,0.45)] bg-[rgba(90,140,255,0.12)] font-black uppercase tracking-[0.12em] text-[#7fb0ff] ${sizeMap[size]}`}
         >
             {shortName}
         </div>

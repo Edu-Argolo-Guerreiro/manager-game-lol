@@ -1,56 +1,61 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { NavLink } from "@/components/layout/nav-link";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Topbar } from "@/components/layout/topbar";
+import { prisma } from "@/lib/prisma";
 
 export const metadata: Metadata = {
     title: "Rift Manager",
     description: "Manager de League of Legends offline",
 };
 
-const navItems = [
-    { href: "/dashboard", label: "Dashboard" },
-    { href: "/roster", label: "Elenco" },
-    { href: "/market", label: "Mercado" },
-    { href: "/staff", label: "Staff" },
-    { href: "/scout", label: "Scout" },
-    { href: "/calendar", label: "Calendário" },
-    { href: "/standings", label: "Classificação" },
-    { href: "/finances", label: "Finanças" },
-];
-
-export default function RootLayout({
+export default async function RootLayout({
     children,
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const save = await prisma.saveState.findFirst({
+        orderBy: { createdAt: "desc" },
+    });
+
+    const season = save?.currentSeasonId
+        ? await prisma.season.findUnique({
+            where: { id: save.currentSeasonId },
+        })
+        : null;
+
+    const team = save?.playerTeamId
+        ? await prisma.team.findUnique({
+            where: { id: save.playerTeamId },
+        })
+        : null;
+
+    const phaseLabel =
+        season?.currentPhase === "PLAYOFFS" ? "Playoffs" : "Fase regular";
+
     return (
         <html lang="pt-BR">
-            <body className="min-h-screen bg-zinc-950 text-zinc-100">
-                <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.10),transparent_30%),linear-gradient(to_bottom,#09090b,#09090b)]">
-                    <header className="sticky top-0 z-40 border-b border-zinc-800/80 bg-zinc-950/85 backdrop-blur">
-                        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-                            <div>
-                                <Link
-                                    href="/"
-                                    className="text-xl font-black tracking-[0.18em] text-cyan-400"
-                                >
-                                    RIFT MANAGER
-                                </Link>
-                                <p className="mt-1 text-xs uppercase tracking-[0.24em] text-zinc-500">
-                                    Brazil Tier 2 Career Mode
-                                </p>
-                            </div>
+            <body>
+                <div className="app-shell flex min-h-screen">
+                    <Sidebar
+                        teamName={team?.name ?? "Rift Manager"}
+                        shortName={team?.shortName ?? "RM"}
+                        wins={team?.wins ?? 0}
+                        losses={team?.losses ?? 0}
+                        seasonLabel={season ? `Temporada ${season.year}` : "Sem temporada"}
+                        weekLabel={season ? `Sem. ${season.currentWeek}` : "Sem. -"}
+                    />
 
-                            <nav className="hidden flex-wrap items-center gap-2 md:flex">
-                                {navItems.map((item) => (
-                                    <NavLink key={item.href} href={item.href} label={item.label} />
-                                ))}
-                            </nav>
-                        </div>
-                    </header>
+                    <div className="flex min-h-screen flex-1 flex-col">
+                        <Topbar
+                            currentWeek={season?.currentWeek ?? 1}
+                            totalWeeks={18}
+                            phaseLabel={phaseLabel}
+                            budget={team?.budget ?? 0}
+                        />
 
-                    <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
+                        <main className="flex-1 px-8 py-7">{children}</main>
+                    </div>
                 </div>
             </body>
         </html>
