@@ -1,4 +1,11 @@
-import { PrismaClient, Division, Role, StaffRole, PlayerStatus } from "@prisma/client";
+import {
+    PrismaClient,
+    Division,
+    Role,
+    StaffRole,
+    PlayerStatus,
+    MatchDay,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -24,6 +31,7 @@ type SeedPlayer = {
     contractYears: number;
     morale: number;
     form: number;
+    fatigue?: number;
     teamwork: number;
     discipline: number;
     championPool: number;
@@ -32,6 +40,8 @@ type SeedPlayer = {
     laneStrength: number;
     teamfight: number;
     status: PlayerStatus;
+    moodNote?: string;
+    careerHistory?: string;
 };
 
 const DEFAULT_PLAYER_TEAM_NAME = "Nova Esports";
@@ -83,6 +93,7 @@ function makePlayer(
         contractYears: data.contractYears ?? 2,
         morale: data.morale ?? 72,
         form: data.form ?? 70,
+        fatigue: data.fatigue ?? 18,
         teamwork: data.teamwork ?? 69,
         discipline: data.discipline ?? 69,
         championPool: data.championPool ?? 69,
@@ -91,69 +102,20 @@ function makePlayer(
         laneStrength: data.laneStrength ?? 69,
         teamfight: data.teamfight ?? 69,
         status: data.status ?? PlayerStatus.STARTER,
+        moodNote: data.moodNote ?? "Motivado",
+        careerHistory: data.careerHistory ?? "Base da carreira registrada.",
     };
 }
 
 function createWeakPlayerRoster(): SeedPlayer[] {
     return [
-        makePlayer({
-            nickname: "Makes",
-            role: Role.TOP,
-            overall: 65,
-            potential: 75,
-            laneStrength: 66,
-            teamfight: 65,
-            teamwork: 69,
-        }),
-        makePlayer({
-            nickname: "Drakez",
-            role: Role.JG,
-            overall: 64,
-            potential: 76,
-            shotcalling: 68,
-            teamwork: 70,
-            clutch: 65,
-        }),
-        makePlayer({
-            nickname: "Krownz",
-            role: Role.MID,
-            overall: 66,
-            potential: 77,
-            laneStrength: 68,
-            championPool: 69,
-            clutch: 67,
-        }),
-        makePlayer({
-            nickname: "Nexus",
-            role: Role.ADC,
-            overall: 65,
-            potential: 76,
-            laneStrength: 67,
-            teamfight: 66,
-        }),
-        makePlayer({
-            nickname: "Astra",
-            role: Role.SUP,
-            overall: 64,
-            potential: 75,
-            shotcalling: 70,
-            teamwork: 71,
-            teamfight: 66,
-        }),
-        makePlayer({
-            nickname: "Kobe",
-            role: Role.TOP,
-            overall: 61,
-            potential: 71,
-            status: PlayerStatus.BENCH,
-        }),
-        makePlayer({
-            nickname: "Mako",
-            role: Role.ADC,
-            overall: 61,
-            potential: 72,
-            status: PlayerStatus.BENCH,
-        }),
+        makePlayer({ nickname: "Makes", role: Role.TOP, overall: 65, potential: 75, laneStrength: 66, teamfight: 65, teamwork: 69 }),
+        makePlayer({ nickname: "Drakez", role: Role.JG, overall: 64, potential: 76, shotcalling: 68, teamwork: 70, clutch: 65 }),
+        makePlayer({ nickname: "Krownz", role: Role.MID, overall: 66, potential: 77, laneStrength: 68, championPool: 69, clutch: 67 }),
+        makePlayer({ nickname: "Nexus", role: Role.ADC, overall: 65, potential: 76, laneStrength: 67, teamfight: 66 }),
+        makePlayer({ nickname: "Astra", role: Role.SUP, overall: 64, potential: 75, shotcalling: 70, teamwork: 71, teamfight: 66 }),
+        makePlayer({ nickname: "Kobe", role: Role.TOP, overall: 61, potential: 71, status: PlayerStatus.BENCH }),
+        makePlayer({ nickname: "Mako", role: Role.ADC, overall: 61, potential: 72, status: PlayerStatus.BENCH }),
     ];
 }
 
@@ -242,38 +204,65 @@ async function createStaffForTeam(teamId: string, division: Division, isPlayerTe
     });
 }
 
-async function createRoundRobinMatches(seasonId: string, division: Division, teamIds: string[]) {
-    const shuffled = [...teamIds];
-    if (shuffled.length % 2 !== 0) return;
+async function createWeekendDoubleRoundRobin(
+    seasonId: string,
+    division: Division,
+    teamIds: string[]
+) {
+    const teamCount = teamIds.length;
+    if (teamCount % 2 !== 0) return;
 
-    const teamsRotating = [...shuffled];
-    const rounds = teamsRotating.length - 1;
-    const matchesPerRound = teamsRotating.length / 2;
+    const rounds = teamCount - 1;
+    let rotation = [...teamIds];
 
     for (let round = 0; round < rounds; round++) {
-        for (let i = 0; i < matchesPerRound; i++) {
-            const home = teamsRotating[i];
-            const away = teamsRotating[teamsRotating.length - 1 - i];
+        const week = round + 1;
+        const saturdayPairs: Array<[string, string]> = [];
+        const sundayPairs: Array<[string, string]> = [];
 
+        for (let i = 0; i < teamCount / 2; i++) {
+            const home = rotation[i];
+            const away = rotation[teamCount - 1 - i];
             if (!home || !away) continue;
 
+            saturdayPairs.push([home, away]);
+            sundayPairs.push([away, home]);
+        }
+
+        for (const [home, away] of saturdayPairs) {
             await prisma.match.create({
                 data: {
                     seasonId,
                     division,
                     phase: "REGULAR_SEASON",
-                    week: round + 1,
+                    week,
                     bestOf: 1,
-                    homeTeamId: round % 2 === 0 ? home : away,
-                    awayTeamId: round % 2 === 0 ? away : home,
+                    matchDay: MatchDay.SATURDAY,
+                    homeTeamId: home,
+                    awayTeamId: away,
                 },
             });
         }
 
-        const fixed = teamsRotating[0];
-        const rest = teamsRotating.slice(1);
+        for (const [home, away] of sundayPairs) {
+            await prisma.match.create({
+                data: {
+                    seasonId,
+                    division,
+                    phase: "REGULAR_SEASON",
+                    week,
+                    bestOf: 1,
+                    matchDay: MatchDay.SUNDAY,
+                    homeTeamId: home,
+                    awayTeamId: away,
+                },
+            });
+        }
+
+        const fixed = rotation[0];
+        const rest = rotation.slice(1);
         rest.unshift(rest.pop()!);
-        teamsRotating.splice(0, teamsRotating.length, fixed, ...rest);
+        rotation = [fixed, ...rest];
     }
 }
 
@@ -281,6 +270,7 @@ async function main() {
     await prisma.match.deleteMany();
     await prisma.staff.deleteMany();
     await prisma.player.deleteMany();
+    await prisma.teamWeekPlan.deleteMany();
     await prisma.team.deleteMany();
     await prisma.season.deleteMany();
     await prisma.saveState.deleteMany();
@@ -306,8 +296,7 @@ async function main() {
         await createStaffForTeam(team.id, team.division, Boolean(team.createdByPlayer));
     }
 
-    const freeAgents = createRealFreeAgents();
-    for (const player of freeAgents) {
+    for (const player of createRealFreeAgents()) {
         await prisma.player.create({
             data: player,
         });
@@ -331,13 +320,13 @@ async function main() {
         orderBy: { name: "asc" },
     });
 
-    await createRoundRobinMatches(
+    await createWeekendDoubleRoundRobin(
         season.id,
         Division.TIER2,
         tier2Teams.map((t) => t.id)
     );
 
-    await createRoundRobinMatches(
+    await createWeekendDoubleRoundRobin(
         season.id,
         Division.TIER1,
         tier1Teams.map((t) => t.id)

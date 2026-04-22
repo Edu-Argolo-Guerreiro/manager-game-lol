@@ -25,9 +25,9 @@ export default async function CalendarPage() {
 
     const currentWeek = season?.currentWeek ?? 1;
 
-    const match =
+    const matches =
         season && team
-            ? await prisma.match.findFirst({
+            ? await prisma.match.findMany({
                 where: {
                     seasonId: season.id,
                     week: currentWeek,
@@ -37,8 +37,9 @@ export default async function CalendarPage() {
                     homeTeam: true,
                     awayTeam: true,
                 },
+                orderBy: [{ matchDay: "asc" }],
             })
-            : null;
+            : [];
 
     const starters = team?.players.filter((player) => player.status === "STARTER") ?? [];
     const avgFatigue =
@@ -72,7 +73,7 @@ export default async function CalendarPage() {
         <div>
             <PageHeader
                 title="Calendário semanal"
-                subtitle="Organize sua semana de trabalho antes do jogo de domingo."
+                subtitle="Organize a semana e acompanhe os dois jogos do fim de semana."
             />
 
             <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -95,40 +96,45 @@ export default async function CalendarPage() {
                     {plan ? <WeekPlanForm plan={plan} /> : null}
                 </SectionCard>
 
-                <SectionCard title="Jogo do fim de semana">
-                    {match ? (
+                <SectionCard title="Jogos do fim de semana">
+                    {matches.length > 0 ? (
                         <div className="space-y-4">
-                            <p className="text-sm text-zinc-400">
-                                A rodada oficial acontece no domingo. Sábado fica reservado para preparação.
-                            </p>
+                            {matches.map((match) => (
+                                <div
+                                    key={match.id}
+                                    className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
+                                >
+                                    <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                                        {match.matchDay === "SATURDAY" ? "Sábado" : "Domingo"}
+                                    </p>
 
-                            <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
-                                <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
-                                    <div className="flex items-center gap-3">
-                                        <TeamBadge shortName={match.homeTeam.shortName} size="sm" />
-                                        <div>
-                                            <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
-                                                Mandante
-                                            </p>
-                                            <p className="font-semibold text-white">{match.homeTeam.name}</p>
+                                    <div className="mt-3 grid items-center gap-4 md:grid-cols-[1fr_auto_1fr]">
+                                        <div className="flex items-center gap-3">
+                                            <TeamBadge shortName={match.homeTeam.shortName} size="sm" />
+                                            <div>
+                                                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                                                    Mandante
+                                                </p>
+                                                <p className="font-semibold text-white">{match.homeTeam.name}</p>
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div className="text-center">
-                                        <p className="text-lg font-black text-cyan-300">VS</p>
-                                    </div>
-
-                                    <div className="flex items-center justify-end gap-3">
-                                        <div className="text-right">
-                                            <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
-                                                Visitante
-                                            </p>
-                                            <p className="font-semibold text-white">{match.awayTeam.name}</p>
+                                        <div className="text-center">
+                                            <p className="text-lg font-black text-cyan-300">VS</p>
                                         </div>
-                                        <TeamBadge shortName={match.awayTeam.shortName} size="sm" />
+
+                                        <div className="flex items-center justify-end gap-3">
+                                            <div className="text-right">
+                                                <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                                                    Visitante
+                                                </p>
+                                                <p className="font-semibold text-white">{match.awayTeam.name}</p>
+                                            </div>
+                                            <TeamBadge shortName={match.awayTeam.shortName} size="sm" />
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ))}
 
                             <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4">
                                 <div className="space-y-2 text-sm">

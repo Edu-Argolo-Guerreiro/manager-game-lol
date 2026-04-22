@@ -58,63 +58,68 @@ enum IndividualFocus {
   DISCIPLINE
 }
 
-model Team {
-  id                 String        @id @default(cuid())
-  name               String
-  shortName          String
-  division           Division
-  budget             Int
-  reputation         Int
-  fanbase            Int
-  wins               Int           @default(0)
-  losses             Int           @default(0)
-  facilityLevel      Int           @default(1)
-  marketingActionsUsed Int         @default(0)
-  createdByPlayer    Boolean       @default(false)
+enum MatchDay {
+  SATURDAY
+  SUNDAY
+}
 
-  players            Player[]
-  staff              Staff[]
-  weekPlans          TeamWeekPlan[]
-  homeMatches        Match[]       @relation("HomeTeam")
-  awayMatches        Match[]       @relation("AwayTeam")
-  winnerMatches      Match[]       @relation("WinnerTeam")
+model Team {
+  id                   String        @id @default(cuid())
+  name                 String
+  shortName            String
+  division             Division
+  budget               Int
+  reputation           Int
+  fanbase              Int
+  wins                 Int           @default(0)
+  losses               Int           @default(0)
+  facilityLevel        Int           @default(1)
+  marketingActionsUsed Int           @default(0)
+  createdByPlayer      Boolean       @default(false)
+
+  players              Player[]
+  staff                Staff[]
+  weekPlans            TeamWeekPlan[]
+  homeMatches          Match[]       @relation("HomeTeam")
+  awayMatches          Match[]       @relation("AwayTeam")
+  winnerMatches        Match[]       @relation("WinnerTeam")
 
   @@unique([name])
   @@unique([shortName])
 }
 
 model Player {
-  id                String          @id @default(cuid())
-  nickname          String
-  nationality       String
-  age               Int
-  role              Role
-  overall           Int
-  potential         Int
-  salary            Int
-  marketValue       Int
-  contractYears     Int
-  morale            Int
-  form              Int
-  fatigue           Int             @default(20)
-  teamwork          Int
-  discipline        Int
-  championPool      Int
-  clutch            Int
-  shotcalling       Int
-  laneStrength      Int
-  teamfight         Int
-  individualFocus   IndividualFocus @default(NONE)
-  status            PlayerStatus    @default(FREE_AGENT)
-  moodNote          String          @default("Motivado")
-  careerHistory     String          @default("Base da carreira registrada.")
-  lastMoraleDelta   Int             @default(0)
-  lastFormDelta     Int             @default(0)
-  lastFatigueDelta  Int             @default(0)
-  lastOverallDelta  Int             @default(0)
+  id               String          @id @default(cuid())
+  nickname         String
+  nationality      String
+  age              Int
+  role             Role
+  overall          Int
+  potential        Int
+  salary           Int
+  marketValue      Int
+  contractYears    Int
+  morale           Int
+  form             Int
+  fatigue          Int             @default(20)
+  teamwork         Int
+  discipline       Int
+  championPool     Int
+  clutch           Int
+  shotcalling      Int
+  laneStrength     Int
+  teamfight        Int
+  individualFocus  IndividualFocus @default(NONE)
+  status           PlayerStatus    @default(FREE_AGENT)
+  moodNote         String          @default("Motivado")
+  careerHistory    String          @default("Base da carreira registrada.")
+  lastMoraleDelta  Int             @default(0)
+  lastFormDelta    Int             @default(0)
+  lastFatigueDelta Int             @default(0)
+  lastOverallDelta Int             @default(0)
 
-  teamId            String?
-  team              Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  teamId           String?
+  team             Team?           @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
   @@index([role])
@@ -149,21 +154,24 @@ model Season {
 }
 
 model TeamWeekPlan {
-  id        String         @id @default(cuid())
-  week      Int
-  monday    ScheduleAction @default(REST)
-  tuesday   ScheduleAction @default(TACTICAL)
-  wednesday ScheduleAction @default(INDIVIDUAL)
-  thursday  ScheduleAction @default(LIGHT)
-  friday    ScheduleAction @default(REVIEW)
-  saturday  ScheduleAction @default(PREP)
-  sunday    ScheduleAction @default(MATCHDAY)
+  id                String         @id @default(cuid())
+  week              Int
+  monday            ScheduleAction @default(REST)
+  tuesday           ScheduleAction @default(TACTICAL)
+  wednesday         ScheduleAction @default(INDIVIDUAL)
+  thursday          ScheduleAction @default(LIGHT)
+  friday            ScheduleAction @default(REVIEW)
+  saturday          ScheduleAction @default(PREP)
+  sunday            ScheduleAction @default(MATCHDAY)
+  weeklyEventTitle  String?
+  weeklyEventBody   String?
+  interviewQuote    String?
 
-  seasonId  String
-  season    Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  seasonId          String
+  season            Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
 
-  teamId    String
-  team      Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId            String
+  team              Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@unique([seasonId, teamId, week])
   @@index([seasonId])
@@ -178,6 +186,8 @@ model Match {
   homeScore    Int?
   awayScore    Int?
   summary      String?
+  matchDay     MatchDay    @default(SUNDAY)
+  playoffRound String?
 
   division     Division
   phase        MatchPhase

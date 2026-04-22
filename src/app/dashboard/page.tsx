@@ -9,6 +9,15 @@ import { SectionCard } from "@/components/ui/section-card";
 import { StatCard } from "@/components/ui/stat-card";
 import { prisma } from "@/lib/prisma";
 
+function playoffLabel(label?: string | null) {
+    if (!label) return null;
+    if (label.startsWith("ROUND1")) return "Playoffs • Rodada inicial";
+    if (label.startsWith("QUARTER")) return "Playoffs • Quartas";
+    if (label.startsWith("SEMI")) return "Playoffs • Semifinal";
+    if (label === "FINAL") return "Playoffs • Final";
+    return `Playoffs • ${label}`;
+}
+
 export default async function DashboardPage() {
     const save = await prisma.saveState.findFirst({
         orderBy: { createdAt: "desc" },
@@ -30,6 +39,21 @@ export default async function DashboardPage() {
         })
         : null;
 
+    const latestWeek = season && season.currentWeek > 1 ? season.currentWeek - 1 : null;
+
+    const latestWeekPlan =
+        season && team && latestWeek
+            ? await prisma.teamWeekPlan.findUnique({
+                where: {
+                    seasonId_teamId_week: {
+                        seasonId: season.id,
+                        teamId: team.id,
+                        week: latestWeek,
+                    },
+                },
+            })
+            : null;
+
     const upcomingMatches =
         save?.currentSeasonId && save?.playerTeamId
             ? await prisma.match.findMany({
@@ -42,10 +66,8 @@ export default async function DashboardPage() {
                     homeTeam: true,
                     awayTeam: true,
                 },
-                orderBy: {
-                    week: "asc",
-                },
-                take: 5,
+                orderBy: [{ week: "asc" }, { matchDay: "asc" }],
+                take: 6,
             })
             : [];
 
@@ -65,9 +87,7 @@ export default async function DashboardPage() {
                     awayTeam: true,
                     winnerTeam: true,
                 },
-                orderBy: {
-                    division: "asc",
-                },
+                orderBy: [{ matchDay: "asc" }, { division: "asc" }],
             })
             : [];
 
@@ -174,6 +194,35 @@ export default async function DashboardPage() {
                 </div>
             ) : null}
 
+            {latestWeekPlan?.weeklyEventTitle || latestWeekPlan?.interviewQuote ? (
+                <div className="mb-6 grid gap-4 xl:grid-cols-2">
+                    {latestWeekPlan?.weeklyEventTitle ? (
+                        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+                            <p className="text-sm uppercase tracking-[0.18em] text-zinc-500">
+                                Último evento interno
+                            </p>
+                            <p className="mt-2 text-lg font-bold text-white">
+                                {latestWeekPlan.weeklyEventTitle}
+                            </p>
+                            <p className="mt-2 text-sm text-zinc-300">
+                                {latestWeekPlan.weeklyEventBody}
+                            </p>
+                        </div>
+                    ) : null}
+
+                    {latestWeekPlan?.interviewQuote ? (
+                        <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5">
+                            <p className="text-sm uppercase tracking-[0.18em] text-zinc-500">
+                                Última entrevista
+                            </p>
+                            <p className="mt-2 text-sm text-zinc-300">
+                                {latestWeekPlan.interviewQuote}
+                            </p>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
+
             {season?.isFinished && promotedPreview && relegatedPreview ? (
                 <div className="mb-6 grid gap-4 md:grid-cols-3">
                     <div className="rounded-2xl border border-emerald-900 bg-emerald-950/40 p-5">
@@ -223,7 +272,7 @@ export default async function DashboardPage() {
                         season
                             ? season.isFinished
                                 ? "Temporada finalizada"
-                                : `Semana atual: ${season.currentWeek}`
+                                : `${season.currentPhase === "PLAYOFFS" ? "Playoffs" : "Semana"} ${season.currentWeek}`
                             : "Sem temporada ativa"
                     }
                 />
@@ -261,7 +310,11 @@ export default async function DashboardPage() {
                                                 Semana {match.week} • {match.division} • MD{match.bestOf}
                                             </p>
                                             <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                                                {match.phase === "REGULAR_SEASON" ? "Regular" : "Playoffs"}
+                                                {match.phase === "PLAYOFFS"
+                                                    ? playoffLabel(match.playoffRound) ?? "Playoffs"
+                                                    : match.matchDay === "SATURDAY"
+                                                        ? "Sábado"
+                                                        : "Domingo"}
                                             </span>
                                         </div>
 
@@ -307,7 +360,10 @@ export default async function DashboardPage() {
                                         className="rounded-2xl border border-zinc-800 bg-zinc-950 p-4"
                                     >
                                         <p className="text-sm text-zinc-500">
-                                            Semana {match.week} • {match.division}
+                                            Semana {match.week} • {match.division} • {match.matchDay === "SATURDAY" ? "Sábado" : "Domingo"}
+                                            {match.phase === "PLAYOFFS" && match.playoffRound
+                                                ? ` • ${playoffLabel(match.playoffRound)}`
+                                                : ""}
                                         </p>
                                         <p className="mt-1 font-semibold text-white">
                                             {match.homeTeam.shortName} {match.homeScore} x {match.awayScore} {match.awayTeam.shortName}
